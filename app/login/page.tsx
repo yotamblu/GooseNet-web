@@ -10,6 +10,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
+import Footer from "../components/Footer";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -246,6 +247,7 @@ export default function LoginPage() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

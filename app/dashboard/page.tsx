@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
 import ThemeToggle from "../components/ThemeToggle";
+import Footer from "../components/Footer";
 
 export default function DashboardPage() {
   const { user, loading, logout } = useAuth();
@@ -194,6 +195,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

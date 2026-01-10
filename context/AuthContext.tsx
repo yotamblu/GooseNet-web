@@ -9,6 +9,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { useRouter } from "next/navigation";
 import { setToken, getToken, clearToken } from "../lib/auth";
 import { apiFetch } from "../lib/api";
+import { hashPassword } from "../lib/crypto-utils";
 
 interface User {
   userName: string;
@@ -32,16 +33,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  /**
-   * Hash password using SHA-256
-   */
-  const hashPassword = async (password: string): Promise<string> => {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-  };
 
   /**
    * Fetch current user from /me endpoint
