@@ -47,3 +47,4 @@ export function getProfilePicSrc(profilePicString: string | undefined | null): s
   return `data:${mimeType};base64,${profilePicString}`;
 }
 
+
