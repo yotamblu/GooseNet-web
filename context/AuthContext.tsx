@@ -16,12 +16,14 @@ interface User {
   email: string;
   role: string;
   apiKey: string;
+  profilePicString?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (userName: string, hashedPassword: string) => Promise<void>;
+  loginWithGoogle: (credential: string, role?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -119,6 +121,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   /**
+   * Login with Google OAuth
+   */
+  const loginWithGoogle = async (credential: string, role?: string): Promise<void> => {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://gooseapi.ddns.net";
+    
+    // Call Google OAuth endpoint
+    const response = await fetch(`${API_BASE_URL}/api/userAuth/google`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        credential,
+        role: role?.toLowerCase(),
+      }),
+    });
+
+    // Handle 401 Unauthorized
+    if (response.status === 401) {
+      throw new Error("Google authentication failed. Please try again.");
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage =
+        errorData.message || `API Error: ${response.status} ${response.statusText}`;
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+
+    // Store token
+    if (data.token) {
+      console.log("✅ JWT Token received from Google auth and saved:", data.token.substring(0, 20) + "...");
+      setToken(data.token);
+      console.log("✅ Token stored in localStorage");
+    } else {
+      throw new Error("No token received from server");
+    }
+
+    // Fetch user data using the token
+    await fetchUser();
+  };
+
+  /**
    * Refresh user data
    */
   const refreshUser = async (): Promise<void> => {
@@ -134,6 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     loading,
     login,
+    loginWithGoogle,
     logout,
     refreshUser,
   };

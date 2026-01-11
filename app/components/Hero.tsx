@@ -60,7 +60,7 @@ export default function Hero() {
           {/* CTA Buttons */}
           <div className="mt-10 flex items-center justify-center gap-4">
             <a
-              href="#cta"
+              href="/signup"
               className="relative rounded-lg bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 px-8 py-3 text-base font-semibold text-white shadow-lg shadow-purple-500/50 transition-all hover:shadow-xl hover:shadow-purple-500/60 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 dark:focus:ring-offset-gray-900 sm:px-10 sm:py-4 sm:text-lg"
             >
               Join GooseNet

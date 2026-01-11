@@ -11,6 +11,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
 import ThemeToggle from "../components/ThemeToggle";
 import Footer from "../components/Footer";
+import { getProfilePicSrc } from "../../lib/profile-pic-utils";
 
 export default function DashboardPage() {
   const { user, loading, logout } = useAuth();
@@ -36,7 +37,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
       {/* Header */}
-      <header className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
           <Link href="/" className="flex items-center gap-2">
             <Image
@@ -50,6 +51,13 @@ export default function DashboardPage() {
           </Link>
           <div className="flex items-center gap-4">
             <ThemeToggle />
+            {user?.profilePicString && (
+              <img
+                src={getProfilePicSrc(user.profilePicString)}
+                alt={user.userName}
+                className="hidden md:block h-10 w-10 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
+              />
+            )}
             <button
               onClick={handleLogout}
               className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"

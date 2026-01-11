@@ -7,10 +7,14 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { useAuth } from "../../context/AuthContext";
 import ThemeToggle from "./ThemeToggle";
+import { getProfilePicSrc } from "../../lib/profile-pic-utils";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, loading } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
@@ -38,18 +42,40 @@ export default function Header() {
         {/* Desktop CTA Buttons */}
         <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-4">
           <ThemeToggle />
-          <a
-            href="/login"
-            className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-          >
-            Login
-          </a>
-          <a
-            href="#cta"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-          >
-            Join GooseNet
-          </a>
+          {!loading && user ? (
+            <>
+              {user.profilePicString && (
+                <Link href="/dashboard" className="hidden lg:flex items-center">
+                  <img
+                    src={getProfilePicSrc(user.profilePicString)}
+                    alt={user.userName}
+                    className="h-10 w-10 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
+                  />
+                </Link>
+              )}
+              <Link
+                href="/dashboard"
+                className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+              >
+                Dashboard
+              </Link>
+            </>
+          ) : (
+            <>
+              <a
+                href="/login"
+                className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+              >
+                Login
+              </a>
+              <a
+                href="/signup"
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+              >
+                Join GooseNet
+              </a>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -85,20 +111,32 @@ export default function Header() {
             >
               How It Works
             </a>
-            <a
-              href="/login"
-              className="block rounded-lg border-2 border-gray-300 dark:border-gray-700 px-3 py-2 text-base font-semibold leading-7 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 mt-4"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Login
-            </a>
-            <a
-              href="#cta"
-              className="block rounded-lg bg-blue-600 px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-blue-700 mt-2"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Join GooseNet
-            </a>
+            {!loading && user ? (
+              <Link
+                href="/dashboard"
+                className="block rounded-lg border-2 border-gray-300 dark:border-gray-700 px-3 py-2 text-base font-semibold leading-7 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 mt-4"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <a
+                  href="/login"
+                  className="block rounded-lg border-2 border-gray-300 dark:border-gray-700 px-3 py-2 text-base font-semibold leading-7 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 mt-4"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Login
+                </a>
+                <a
+                  href="/signup"
+                  className="block rounded-lg bg-blue-600 px-3 py-2 text-base font-semibold leading-7 text-white hover:bg-blue-700 mt-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Join GooseNet
+                </a>
+              </>
+            )}
           </div>
         </div>
       )}

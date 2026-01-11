@@ -28,6 +28,31 @@ export default function Home() {
     }
   }, [user, loading, router]);
 
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render landing page if user is logged in (redirect is in progress)
+  if (user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Only render landing page if user is not logged in
   return (
     <main className="min-h-screen min-h-[100dvh] bg-white dark:bg-gray-900">
       <Header />
