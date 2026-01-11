@@ -14,13 +14,14 @@ async function sha256String(str: string): Promise<string> {
 
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return hashHex;
 }
 
 /**
  * Hash password using SHA-256
- * Uses crypto.subtle if available, falls back to pure JavaScript SHA-256
+ * Uses crypto.subtle - must be available in browser context
  */
 export async function hashPassword(password: string): Promise<string> {
   // Ensure we're in browser context
@@ -28,24 +29,27 @@ export async function hashPassword(password: string): Promise<string> {
     throw new Error("Password hashing must be done in the browser");
   }
 
-  // Try crypto.subtle first (works in HTTPS and localhost)
-  if (window.crypto && window.crypto.subtle) {
-    try {
-      return await sha256String(password);
-    } catch (error) {
-      console.warn("crypto.subtle failed, using pure JavaScript SHA-256 fallback:", error);
-      // Fall through to fallback
-    }
+  // crypto.subtle must be available (works in HTTPS and localhost)
+  if (!window.crypto || !window.crypto.subtle) {
+    throw new Error("crypto.subtle is not available. Please use HTTPS or localhost.");
   }
 
-  // Fallback: Use pure JavaScript SHA-256 for non-HTTPS contexts (mobile browsers, etc.)
   try {
-    const { sha256Pure } = await import("./sha256-pure");
-    return sha256Pure(password);
+    const hash = await sha256String(password);
+    // Debug: Verify hash for "test" matches expected value
+    if (password === "test") {
+      const expectedHash = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+      if (hash !== expectedHash) {
+        console.error("❌ Hash mismatch for 'test':", hash, "expected:", expectedHash);
+      } else {
+        console.log("✅ Hash verified for 'test'");
+      }
+    }
+    return hash;
   } catch (error) {
-    console.error("Failed to hash password:", error);
+    console.error("Failed to hash password with crypto.subtle:", error);
     throw new Error(
-      "Password hashing failed. Please refresh the page and try again."
+      "Password hashing failed. crypto.subtle is required. Please use HTTPS or localhost."
     );
   }
 }

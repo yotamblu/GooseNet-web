@@ -32,13 +32,27 @@ class ApiService {
 
   /**
    * Hash password using SHA-256
+   * Matches the exact implementation: encoder -> digest -> array -> hex string
    */
   private async hashPassword(password: string): Promise<string> {
+    // Debug: Log password details to verify it's not modified
+    console.log("🔐 API Service - Password to hash length:", password.length, "first char:", password.charCodeAt(0));
     const encoder = new TextEncoder();
     const data = encoder.encode(password);
     const hashBuffer = await crypto.subtle.digest("SHA-256", data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    
+    // Debug: Verify hash for "test"
+    if (password === "test") {
+      const expectedHash = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+      if (hashHex !== expectedHash) {
+        console.error("❌ API Service - Hash mismatch for 'test':", hashHex, "expected:", expectedHash);
+      } else {
+        console.log("✅ API Service - Hash verified for 'test'");
+      }
+    }
+    console.log("🔐 API Service - Generated hash:", hashHex);
     return hashHex;
   }
 
@@ -228,7 +242,7 @@ class ApiService {
 
   /**
    * Login user with username and password
-   * Sends to GooseAPI with SHA-256 hashed password
+   * Sends SHA-256 hashed password to match what backend expects for login
    * Throws specific error for 401 (invalid credentials)
    */
   async login(username: string, password: string): Promise<ApiResponse<unknown>> {
@@ -242,7 +256,7 @@ class ApiService {
           method: "POST",
           body: {
             userName: username,
-            hashedPassword: hashedPassword,
+            hashedPassword: hashedPassword, // Send SHA-256 hashed password
           },
           requiresAuth: false,
         }

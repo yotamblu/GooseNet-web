@@ -67,19 +67,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Login user
    */
   const login = async (userName: string, password: string): Promise<void> => {
+    // Hash password with SHA-256 before sending (backend expects hashed password for login)
+    // Debug: Log the original password length and first char to verify it's not modified
+    console.log("🔐 Login - Original password length:", password.length, "first char code:", password.charCodeAt(0));
     const hashedPassword = await hashPassword(password);
+    console.log("🔐 Login - Password hashed:", hashedPassword);
+    console.log("🔐 Login - Full hash length:", hashedPassword.length, "(should be 64 for SHA-256)");
 
     // Call login endpoint (without auth header since we're logging in)
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://gooseapi.ddns.net";
+    const loginBody = {
+      userName,
+      hashedPassword, // Send SHA-256 hashed password
+    };
+    console.log("📤 Login request body:", { ...loginBody, hashedPassword: "***" });
+    
     const response = await fetch(`${API_BASE_URL}/api/userAuth`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        userName,
-        hashedPassword,
-      }),
+      body: JSON.stringify(loginBody),
     });
 
     // Handle 401 Unauthorized
