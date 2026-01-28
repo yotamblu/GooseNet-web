@@ -160,7 +160,13 @@ export default function ConnectAthletePage() {
               <img
                 src={getProfilePicSrc(user.profilePicString)}
                 alt={user.userName}
+                referrerPolicy="no-referrer"
                 className="hidden md:block h-10 w-10 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
+                onError={(e) => {
+                  // Fallback: hide image if it fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
               />
             )}
             <button

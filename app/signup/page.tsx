@@ -111,31 +111,18 @@ export default function SignUpPage() {
     }
 
     try {
-      // IMPORTANT: Password hashing strategy
-      // If the backend hashes the password again during registration, we need to send
-      // the plain password here. However, login sends hashedPassword, so the backend
-      // must be comparing hashed passwords. The issue is likely:
-      // - Registration: Frontend hashes → Backend hashes again → Stores double-hashed
-      // - Login: Frontend hashes → Backend compares with double-hashed → Mismatch!
-      //
-      // Solution: Send plain password during registration if backend hashes it,
-      // OR ensure backend doesn't hash again. Since we can't modify backend, try
-      // sending plain password first.
-      
-      // Hash password for potential use (we'll try plain first)
+      // Hash password with SHA-256 before sending to API (same as login flow)
       const hashedPassword = await hashPassword(password);
-      console.log("🔐 Registration - Password hash (for reference):", hashedPassword.substring(0, 20) + "...");
+      console.log("🔐 Registration - Password hashed with SHA-256:", hashedPassword.substring(0, 20) + "...");
 
       // Call registration endpoint
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://gooseapi.ddns.net";
-      // Try sending plain password - backend likely hashes it during registration
-      // If backend expects pre-hashed, change 'Password: password' to 'Password: hashedPassword'
       const registrationBody = {
         UserName: username,
         FullName: fullName,
         Role: role.toLowerCase(),
         Email: email,
-        Password: password, // Send plain password - backend will hash it and store it
+        Password: hashedPassword, // Send SHA-256 hashed password to API
       };
       console.log("📤 Registration request body:", { ...registrationBody, Password: "***" });
       
@@ -227,7 +214,13 @@ export default function SignUpPage() {
                 <img
                   src={getProfilePicSrc(user.profilePicString)}
                   alt={user.userName}
+                  referrerPolicy="no-referrer"
                   className="h-10 w-10 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
+                  onError={(e) => {
+                    // Fallback: hide image if it fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
                 />
               </Link>
             )}

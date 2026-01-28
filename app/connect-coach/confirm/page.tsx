@@ -12,6 +12,7 @@ import Image from "next/image";
 import { useAuth } from "../../../context/AuthContext";
 import { useRequireAuth } from "../../../hooks/useRequireAuth";
 import { apiFetch } from "../../../lib/api";
+import { getToken } from "../../../lib/auth";
 import ThemeToggle from "../../components/ThemeToggle";
 import Footer from "../../components/Footer";
 import { getProfilePicSrc } from "../../../lib/profile-pic-utils";
@@ -30,6 +31,7 @@ export default function ConnectCoachConfirmPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   // Require authentication
   useRequireAuth();
@@ -88,22 +90,50 @@ export default function ConnectCoachConfirmPage() {
   }, [searchParams, user, loading]);
 
   const handleConfirm = async () => {
-    if (!coachCode) return;
+    if (!coachCode || !user || !user.apiKey) return;
 
     try {
       setIsConnecting(true);
       setError(null);
+      setSuccess(false);
 
       // Call API to connect with coach
-      await apiFetch("/api/CoachConnection/connect", {
-        method: "POST",
-        body: JSON.stringify({
-          coachCode: coachCode,
-        }),
-      });
+      const token = getToken();
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://gooseapi.ddns.net";
+      const response = await fetch(
+        `${API_BASE_URL}/api/coachConnection/connect`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+          body: JSON.stringify({
+            apiKey: user.apiKey,
+            coachId: coachCode,
+          }),
+        }
+      );
 
-      // Redirect to dashboard on success
-      router.push("/dashboard");
+      if (response.status === 401) {
+        setError("You cannot connect with the same coach twice.");
+        setIsConnecting(false);
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to connect with coach");
+      }
+
+      // Show success animation
+      setSuccess(true);
+      setIsConnecting(false);
+
+      // Redirect to dashboard after showing success animation
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 2000);
     } catch (err) {
       console.error("Failed to connect with coach:", err);
       setError(err instanceof Error ? err.message : "Failed to connect with coach. Please try again.");
@@ -156,7 +186,13 @@ export default function ConnectCoachConfirmPage() {
               <img
                 src={getProfilePicSrc(user.profilePicString)}
                 alt={user.userName}
+                referrerPolicy="no-referrer"
                 className="hidden md:block h-10 w-10 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
+                onError={(e) => {
+                  // Fallback: hide image if it fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
               />
             )}
             <button
@@ -193,27 +229,55 @@ export default function ConnectCoachConfirmPage() {
 
           {/* Confirmation Card */}
           <div className="relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-4 sm:p-6 lg:p-8">
-            {error ? (
+            {success ? (
               <div className="text-center">
                 <div className="mb-4">
-                  <svg
-                    className="mx-auto h-12 w-12 text-red-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
+                  <div className="mx-auto h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center transition-all duration-300 animate-[bounce_0.6s_ease-in-out]">
+                    <svg
+                      className="h-10 w-10 sm:h-12 sm:w-12 text-green-600 dark:text-green-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </div>
                 </div>
-                <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Error
+                <p className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Connection Successful!
                 </p>
-                <p className="text-gray-600 dark:text-gray-400 mb-4 px-2">{error}</p>
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 px-2">
+                  You've been successfully connected with coach {coachName}. Redirecting to dashboard...
+                </p>
+              </div>
+            ) : error ? (
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="mx-auto h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center transition-all duration-300 animate-[bounce_0.6s_ease-in-out]">
+                    <svg
+                      className="h-10 w-10 sm:h-12 sm:w-12 text-red-600 dark:text-red-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Connection Failed
+                </p>
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 px-2">{error}</p>
                 <button
                   onClick={handleCancel}
                   className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
@@ -230,7 +294,13 @@ export default function ConnectCoachConfirmPage() {
                       <img
                         src={getProfilePicSrc(coachProfilePic) || ""}
                         alt={coachName || "Coach"}
+                        referrerPolicy="no-referrer"
                         className="h-24 w-24 sm:h-32 sm:w-32 rounded-full border-4 border-blue-600 dark:border-blue-400 object-cover shadow-lg"
+                        onError={(e) => {
+                          // Fallback: hide image if it fails to load
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
                       />
                     </div>
                   )}

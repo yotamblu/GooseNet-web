@@ -4,8 +4,43 @@
  */
 
 /**
+ * Normalize Google profile image URLs
+ * Google profile images can have size parameters that need to be handled
+ * URLs like: https://lh3.googleusercontent.com/a/...=s96-c or ...?sz=50
+ * 
+ * @param url - Google profile image URL
+ * @returns Normalized URL without problematic size parameters
+ */
+function normalizeGoogleProfileUrl(url: string): string {
+  // Check if it's a Google profile image URL
+  if (url.includes('googleusercontent.com')) {
+    try {
+      const urlObj = new URL(url);
+      
+      // Remove size parameters that might cause issues
+      // Google uses =s96-c, =s50, ?sz=50, etc.
+      // We'll keep the base URL and let the browser handle sizing via CSS
+      urlObj.search = ''; // Remove query parameters
+      
+      // Remove size parameters from pathname (e.g., =s96-c at the end)
+      let pathname = urlObj.pathname;
+      // Remove size patterns like =s96-c, =s50, etc. from the end
+      pathname = pathname.replace(/=[sc]\d+(-[a-z])?$/i, '');
+      urlObj.pathname = pathname;
+      
+      return urlObj.toString();
+    } catch (e) {
+      // If URL parsing fails, return original
+      return url;
+    }
+  }
+  return url;
+}
+
+/**
  * Get the proper image source for a profile picture
  * Handles both URL strings and base64 encoded images
+ * Normalizes Google profile image URLs to ensure they load properly
  * 
  * @param profilePicString - Either a URL (http/https) or base64 string
  * @returns Properly formatted image source string
@@ -17,7 +52,8 @@ export function getProfilePicSrc(profilePicString: string | undefined | null): s
 
   // Check if it's already a URL (http:// or https://)
   if (profilePicString.startsWith("http://") || profilePicString.startsWith("https://")) {
-    return profilePicString;
+    // Normalize Google profile URLs
+    return normalizeGoogleProfileUrl(profilePicString);
   }
 
   // Check if it's already a data URI
@@ -46,6 +82,7 @@ export function getProfilePicSrc(profilePicString: string | undefined | null): s
 
   return `data:${mimeType};base64,${profilePicString}`;
 }
+
 
 
 

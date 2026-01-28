@@ -1,4 +1,25 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+/* Hide Leaflet attribution control globally */
+.leaflet-control-attribution,
+.leaflet-control {
+  display: none !important;
+}
+
+/* Ensure Leaflet map stays below nav bar (z-50) */
+.leaflet-container,
+.leaflet-pane,
+.leaflet-map-pane,
+.leaflet-tile-pane,
+.leaflet-overlay-pane,
+.leaflet-shadow-pane,
+.leaflet-marker-pane,
+.leaflet-tooltip-pane,
+.leaflet-popup-pane {
+  z-index: 0 !important;
+  position: relative !important;
+}
 
 /* Tailwind v4 dark mode variant */
 @custom-variant dark (&:where(.dark, .dark *));

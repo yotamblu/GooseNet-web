@@ -8,7 +8,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import Footer from "../components/Footer";
 import ThemeToggle from "../components/ThemeToggle";
@@ -16,6 +16,7 @@ import { getProfilePicSrc } from "../../lib/profile-pic-utils";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, user, loading } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -28,9 +29,15 @@ export default function LoginPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (!loading && user) {
-      router.push("/dashboard");
+      // Check if there's a return URL
+      const returnUrl = searchParams.get("returnUrl");
+      if (returnUrl) {
+        router.push(returnUrl);
+      } else {
+        router.push("/dashboard");
+      }
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, searchParams]);
 
   // Show loading state while checking authentication
   if (loading) {
@@ -45,12 +52,13 @@ export default function LoginPage() {
   }
 
   // Don't render login form if user is already logged in (redirect will happen)
+  // Note: This check happens after loading, so user is guaranteed to be User | null
   if (user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Redirecting to dashboard...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Redirecting...</p>
         </div>
       </div>
     );
@@ -64,7 +72,7 @@ export default function LoginPage() {
     try {
       await login(username, password);
       // Login successful - AuthContext will update user state
-      // Redirect will happen via useEffect above
+      // Redirect will happen via useEffect above (which will check for returnUrl)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred during login";
       setResult({
@@ -92,15 +100,7 @@ export default function LoginPage() {
           </Link>
           <div className="flex items-center gap-4">
             <ThemeToggle />
-            {!loading && user && user.profilePicString && (
-              <Link href="/dashboard" className="hidden md:flex items-center">
-                <img
-                  src={getProfilePicSrc(user.profilePicString)}
-                  alt={user.userName}
-                  className="h-10 w-10 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
-                />
-              </Link>
-            )}
+            {/* Profile pic not shown here - if user is logged in, they're redirected above */}
           </div>
         </nav>
       </header>

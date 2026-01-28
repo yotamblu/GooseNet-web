@@ -7,20 +7,119 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "next-themes";
 import { useAuth } from "../../context/AuthContext";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
 import ThemeToggle from "../components/ThemeToggle";
 import Footer from "../components/Footer";
 import { getProfilePicSrc } from "../../lib/profile-pic-utils";
+import { apiService } from "../services/api";
 
 export default function DashboardPage() {
   const { user, loading, logout } = useAuth();
+  const { theme } = useTheme();
+  const router = useRouter();
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"error" | "success">("error");
+  const [isCheckingConnection, setIsCheckingConnection] = useState(false);
   
   // Require authentication - redirects to login if not authenticated
   useRequireAuth();
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const showToastMessage = (message: string, type: "error" | "success" = "error") => {
+    setToastMessage(message);
+    setToastType(type);
+    setShowToast(true);
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
+  const handleGarminSync = async () => {
+    if (!user || user.role?.toLowerCase() !== "athlete") {
+      return;
+    }
+
+    try {
+      setIsCheckingConnection(true);
+
+      // First check if already connected - validate connection status
+      if (!user.apiKey) {
+        throw new Error("API key not found. Please log in again.");
+      }
+
+      const connectionResponse = await apiService.validateGarminConnection<{ isConnected: boolean }>(user.apiKey);
+      
+      // Validate response structure
+      if (!connectionResponse.data || typeof connectionResponse.data !== "object") {
+        throw new Error("Invalid response from connection validation");
+      }
+
+      const isConnected = (connectionResponse.data as { isConnected: boolean }).isConnected;
+      
+      // Check if athlete is already connected
+      if (isConnected === true) {
+        setIsCheckingConnection(false);
+        // Show toast that they're already connected
+        showToastMessage("You're already connected to Garmin", "error");
+        return;
+      }
+
+      // If not connected (isConnected === false), proceed with OAuth flow
+      if (isConnected !== false) {
+        // Handle unexpected response
+        console.warn("Unexpected connection status:", isConnected);
+      }
+
+      // Request OAuth token - always pass apiKey as query string
+      const tokenResponse = await apiService.requestGarminToken<{ 
+        stateToken: string;
+        oauth_token: string; 
+        oauth_token_secret: string;
+      }>(user.apiKey);
+      
+      if (!tokenResponse.data?.oauth_token || !tokenResponse.data?.stateToken) {
+        throw new Error("Failed to get OAuth token or state token");
+      }
+
+      // Store token_secret and stateToken for callback
+      const tokenTimestamp = Date.now().toString();
+      localStorage.setItem("garmin_token_secret", tokenResponse.data.oauth_token_secret);
+      localStorage.setItem("garmin_api_key", user.apiKey);
+      localStorage.setItem("garmin_token_timestamp", tokenTimestamp);
+
+      // Build callback URL with stateToken, theme, and OAuth params (for mobile localStorage issues)
+      const currentTheme = theme || "light";
+      const callbackUrl = `${window.location.origin}/garmin/callback?stateToken=${encodeURIComponent(tokenResponse.data.stateToken)}&theme=${encodeURIComponent(currentTheme)}&token_secret=${encodeURIComponent(tokenResponse.data.oauth_token_secret)}&apiKey=${encodeURIComponent(user.apiKey)}&timestamp=${encodeURIComponent(tokenTimestamp)}`;
+      const encodedCallback = encodeURIComponent(callbackUrl);
+
+      // Redirect to Garmin OAuth - ensure it opens in the same browser window/tab
+      // Using window.location.replace ensures it stays in the same browser and doesn't open the app
+      const garminOAuthUrl = `https://connect.garmin.com/oauthConfirm?oauth_token=${tokenResponse.data.oauth_token}&oauth_callback=${encodedCallback}`;
+      
+      // Use window.location.replace to navigate in the same window/tab
+      // This ensures the OAuth flow happens in the browser, not in the Garmin mobile app
+      // replace() is used instead of href to replace the current page in history
+      window.location.replace(garminOAuthUrl);
+    } catch (error) {
+      setIsCheckingConnection(false);
+      console.error("Failed to initiate Garmin sync:", error);
+      
+      // Handle specific error cases
+      if (error instanceof Error && error.message.includes("401")) {
+        showToastMessage("Authentication failed. Please log in again.", "error");
+      } else {
+        showToastMessage(error instanceof Error ? error.message : "Failed to connect to Garmin. Please try again.", "error");
+      }
+    }
   };
 
   if (loading) {
@@ -39,7 +138,7 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="cursor-pointer flex items-center gap-2">
             <Image
               src="/logo/goosenet_logo.png"
               alt="GooseNet"
@@ -55,12 +154,18 @@ export default function DashboardPage() {
               <img
                 src={getProfilePicSrc(user.profilePicString)}
                 alt={user.userName}
-                className="hidden md:block h-10 w-10 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
+                referrerPolicy="no-referrer"
+                className="cursor-pointer hidden md:block h-10 w-10 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
+                onError={(e) => {
+                  // Fallback: hide image if it fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
               />
             )}
             <button
               onClick={handleLogout}
-              className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="cursor-pointer rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Logout
             </button>
@@ -95,7 +200,7 @@ export default function DashboardPage() {
             {user?.role?.toLowerCase() === "coach" ? (
               <>
                 {/* Athletes Card */}
-                <div className="relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 hover:shadow-xl transition-shadow flex flex-col">
+                <Link href="/athletes" className="cursor-pointer relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 hover:shadow-xl transition-shadow flex flex-col">
                   <div className="flex items-center gap-4 mb-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600">
                       <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -107,13 +212,13 @@ export default function DashboardPage() {
                   <p className="text-gray-600 dark:text-gray-400 mb-4 flex-grow">
                     View and manage your athletes
                   </p>
-                  <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
+                  <button className="cursor-pointer w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
                     View Athletes
                   </button>
-                </div>
+                </Link>
 
                 {/* Flocks Card */}
-                <div className="relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 hover:shadow-xl transition-shadow flex flex-col">
+                <Link href="/flocks" className="relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 hover:shadow-xl transition-shadow flex flex-col">
                   <div className="flex items-center gap-4 mb-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600">
                       <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -128,10 +233,10 @@ export default function DashboardPage() {
                   <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
                     View Flocks
                   </button>
-                </div>
+                </Link>
 
                 {/* Connect Athlete Card */}
-                <Link href="/connect-athlete" className="relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 hover:shadow-xl transition-shadow flex flex-col">
+                <Link href="/connect-athlete" className="cursor-pointer relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 hover:shadow-xl transition-shadow flex flex-col">
                   <div className="flex items-center gap-4 mb-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600">
                       <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -143,7 +248,7 @@ export default function DashboardPage() {
                   <p className="text-gray-600 dark:text-gray-400 mb-4 flex-grow">
                     Add and connect with new athletes
                   </p>
-                  <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
+                  <button className="cursor-pointer w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
                     Connect Athlete
                   </button>
                 </Link>
@@ -160,9 +265,9 @@ export default function DashboardPage() {
                     <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Settings</h2>
                   </div>
                   <p className="text-gray-600 dark:text-gray-400 mb-4 flex-grow">
-                    Configure your app preferences and notifications
+                    Change your profile data and settings in the dashboard
                   </p>
-                  <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
+                  <button className="cursor-pointer w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
                     Open Settings
                   </button>
                 </div>
@@ -182,13 +287,13 @@ export default function DashboardPage() {
                   <p className="text-gray-600 dark:text-gray-400 mb-4 flex-grow">
                     View and manage your structured running workouts
                   </p>
-                  <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
+                  <button className="cursor-pointer w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
                     View Workouts
                   </button>
                 </div>
 
                 {/* Activities Card */}
-                <div className="relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 hover:shadow-xl transition-shadow flex flex-col">
+                <Link href="/activities" className="cursor-pointer relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 hover:shadow-xl transition-shadow flex flex-col">
                   <div className="flex items-center gap-4 mb-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600">
                       <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -200,10 +305,10 @@ export default function DashboardPage() {
                   <p className="text-gray-600 dark:text-gray-400 mb-4 flex-grow">
                     Track your performance and progress over time
                   </p>
-                  <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
+                  <button className="cursor-pointer w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
                     View Activities
                   </button>
-                </div>
+                </Link>
 
                 {/* Garmin Sync Card */}
                 <div className="relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 hover:shadow-xl transition-shadow flex flex-col">
@@ -218,13 +323,89 @@ export default function DashboardPage() {
                   <p className="text-gray-600 dark:text-gray-400 mb-4 flex-grow">
                     Connect and sync with your Garmin account
                   </p>
-                  <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
-                    Connect Garmin
+                  <button 
+                    onClick={handleGarminSync}
+                    disabled={isCheckingConnection}
+                    className="cursor-pointer w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isCheckingConnection ? (
+                      <>
+                        <svg
+                          className="animate-spin h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Checking...
+                      </>
+                    ) : (
+                      "Connect Garmin"
+                    )}
                   </button>
+                  
+                  {/* Toast Notification */}
+                  <AnimatePresence>
+                    {showToast && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className={`mt-2 px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${
+                          toastType === "error"
+                            ? "text-red-800 dark:text-red-300 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700/50"
+                            : "text-green-800 dark:text-green-300 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700/50"
+                        }`}
+                      >
+                        {toastType === "error" ? (
+                          <svg
+                            className="h-4 w-4 flex-shrink-0"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        ) : (
+                          <svg
+                            className="h-4 w-4 flex-shrink-0"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        )}
+                        <span>{toastMessage}</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {/* Coach Connection Card */}
-                <Link href="/connect-coach" className="relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 hover:shadow-xl transition-shadow flex flex-col">
+                <Link href="/connect-coach" className="cursor-pointer relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 hover:shadow-xl transition-shadow flex flex-col">
                   <div className="flex items-center gap-4 mb-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-600">
                       <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -236,7 +417,7 @@ export default function DashboardPage() {
                   <p className="text-gray-600 dark:text-gray-400 mb-4 flex-grow">
                     Connect with your coach and view assigned workouts
                   </p>
-                  <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
+                  <button className="cursor-pointer w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
                     Connect with Coach
                   </button>
                 </Link>
@@ -254,7 +435,7 @@ export default function DashboardPage() {
                   <p className="text-gray-600 dark:text-gray-400 mb-4 flex-grow">
                     Track your sleep patterns and recovery
                   </p>
-                  <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
+                  <button className="cursor-pointer w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
                     View Sleep
                   </button>
                 </div>
@@ -271,9 +452,9 @@ export default function DashboardPage() {
                     <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Settings</h2>
                   </div>
                   <p className="text-gray-600 dark:text-gray-400 mb-4 flex-grow">
-                    Configure your app preferences and notifications
+                    Change your profile data and settings in the dashboard
                   </p>
-                  <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
+                  <button className="cursor-pointer w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors mt-auto">
                     Open Settings
                   </button>
                 </div>

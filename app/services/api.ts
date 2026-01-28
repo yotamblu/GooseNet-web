@@ -320,41 +320,214 @@ class ApiService {
     return this.get<T>("/auth/me");
   }
 
-  // ==================== Example API Methods ====================
+  // ==================== Example API Methods (Legacy) ====================
+  // Note: These are example methods. Use workoutSummary endpoints instead.
+
+  // ==================== Coach Methods ====================
 
   /**
-   * Get workouts
+   * Get all athletes for a coach
+   * @param apiKey - The coach's API key
    */
-  async getWorkouts<T = unknown>(): Promise<ApiResponse<T>> {
-    return this.get<T>("/workouts");
+  async getAthletes<T = unknown>(apiKey: string): Promise<ApiResponse<T>> {
+    return this.get<T>(`/api/athletes?apiKey=${encodeURIComponent(apiKey)}`);
   }
 
   /**
-   * Get workout by ID
+   * Get all flocks for a coach
+   * @param apiKey - The coach's API key
    */
-  async getWorkout<T = unknown>(id: string): Promise<ApiResponse<T>> {
-    return this.get<T>(`/workouts/${id}`);
+  async getFlocks<T = unknown>(apiKey: string): Promise<ApiResponse<T>> {
+    return this.get<T>(`/api/flocks/getFlocks?apiKey=${encodeURIComponent(apiKey)}`);
+  }
+
+  // ==================== Garmin OAuth Methods ====================
+
+  /**
+   * Validate if athlete is already connected to Garmin
+   * @param apiKey - The user's API key
+   * @returns Response with isConnected boolean
+   */
+  async validateGarminConnection<T = { isConnected: boolean }>(apiKey: string): Promise<ApiResponse<T>> {
+    return this.get<T>(`/api/ValidateGarminConnection?apiKey=${encodeURIComponent(apiKey)}`);
   }
 
   /**
-   * Create workout
+   * Request OAuth token from Garmin
+   * @param apiKey - API key (required) - always passed as query string
+   * @returns Response with: { stateToken: string, oauth_token: string, oauth_token_secret: string }
    */
-  async createWorkout<T = unknown>(workout: unknown): Promise<ApiResponse<T>> {
-    return this.post<T>("/workouts", workout);
+  async requestGarminToken<T = { stateToken: string; oauth_token: string; oauth_token_secret: string }>(
+    apiKey: string
+  ): Promise<ApiResponse<T>> {
+    return this.get<T>(`/api/request-token?apiKey=${encodeURIComponent(apiKey)}`);
   }
 
   /**
-   * Update workout
+   * Get JWT token from state token
+   * @param stateToken - State token from OAuth flow
+   * @returns Response with: { token: string } or { message: string } if expired
    */
-  async updateWorkout<T = unknown>(id: string, workout: unknown): Promise<ApiResponse<T>> {
-    return this.put<T>(`/workouts/${id}`, workout);
+  async getJwtFromStateToken<T = { token: string } | { message: string }>(
+    stateToken: string
+  ): Promise<ApiResponse<T>> {
+    return this.get<T>(`/api/auth/stateToken?token=${encodeURIComponent(stateToken)}`, {
+      requiresAuth: false,
+    });
   }
 
   /**
-   * Delete workout
+   * Get OAuth token secret from state token
+   * @param stateToken - State token from OAuth flow
+   * @returns Response with: { token_secret: string, apiKey: string } or { message: string } if expired
    */
-  async deleteWorkout<T = unknown>(id: string): Promise<ApiResponse<T>> {
-    return this.delete<T>(`/workouts/${id}`);
+  async getOAuthDataFromStateToken<T = { token_secret: string; apiKey: string } | { message: string }>(
+    stateToken: string
+  ): Promise<ApiResponse<T>> {
+    return this.get<T>(`/api/auth/stateToken/oauth?token=${encodeURIComponent(stateToken)}`, {
+      requiresAuth: false,
+    });
+  }
+
+  /**
+   * Get Garmin access token after OAuth callback (Stateful flow)
+   * @param oauth_token - OAuth token from callback
+   * @param oauth_verifier - OAuth verifier from callback
+   * @param state - State from initial request (stateful flow)
+   * @param apiKey - User's API key
+   */
+  async getGarminAccessTokenStateful<T = unknown>(
+    oauth_token: string,
+    oauth_verifier: string,
+    state: string,
+    apiKey: string
+  ): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      oauth_token: oauth_token,
+      oauth_verifier: oauth_verifier,
+      state: state,
+      apiKey: apiKey,
+    });
+    return this.get<T>(`/api/access-token?${params.toString()}`);
+  }
+
+  /**
+   * Get Garmin access token after OAuth callback (Stateless flow)
+   * @param oauth_token - OAuth token from callback
+   * @param oauth_verifier - OAuth verifier from callback
+   * @param token_secret - Token secret from initial request
+   * @param apiKey - Optional API key to include in request
+   */
+  async getGarminAccessTokenStateless<T = unknown>(
+    oauth_token: string,
+    oauth_verifier: string,
+    token_secret: string,
+    apiKey?: string
+  ): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      oauth_token: oauth_token,
+      oauth_verifier: oauth_verifier,
+      token_secret: token_secret,
+    });
+    if (apiKey) {
+      params.append("apiKey", apiKey);
+    }
+    return this.get<T>(`/api/access-token?${params.toString()}`);
+  }
+
+  /**
+   * Get Garmin access token after OAuth callback (Legacy method for backward compatibility)
+   * @deprecated Use getGarminAccessTokenStateful or getGarminAccessTokenStateless instead
+   */
+  async getGarminAccessToken<T = unknown>(
+    oauth_token: string,
+    oauth_verifier: string,
+    token_secret: string,
+    apiKey: string
+  ): Promise<ApiResponse<T>> {
+    // Default to stateless flow for backward compatibility
+    return this.getGarminAccessTokenStateless<T>(oauth_token, oauth_verifier, token_secret);
+  }
+
+  // ==================== Workout Methods ====================
+
+  /**
+   * Get workout summary for a specific date
+   * @param athleteName - Name of the athlete
+   * @param apiKey - API key for authorization
+   * @param date - Date in format "MM/dd/yyyy" or "M/d/yyyy"
+   */
+  async getWorkoutSummary<T = { runningWorkouts: unknown[]; strengthWorkouts: unknown[] }>(
+    athleteName: string,
+    apiKey: string,
+    date: string
+  ): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      athleteName: athleteName,
+      apiKey: apiKey,
+      date: date,
+    });
+    return this.get<T>(`/api/workoutSummary?${params.toString()}`);
+  }
+
+  /**
+   * Get workout feed with pagination
+   * @param apiKey - API key for authorization
+   * @param athleteName - Name of the athlete
+   * @param runningCursor - Optional cursor for running workouts pagination (MM/dd/yyyy)
+   * @param strengthCursor - Optional cursor for strength workouts pagination (MM/dd/yyyy)
+   */
+  async getWorkoutFeed<T = {
+    runningWorkouts: unknown[];
+    strengthWorkouts: unknown[];
+    runningNextCursor: string | null;
+    strengthNextCursor: string | null;
+  }>(
+    apiKey: string,
+    athleteName: string,
+    runningCursor?: string | null,
+    strengthCursor?: string | null
+  ): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      apiKey: apiKey,
+      athleteName: athleteName,
+    });
+    if (runningCursor) {
+      params.append("runningCursor", runningCursor);
+    }
+    if (strengthCursor) {
+      params.append("strengthCursor", strengthCursor);
+    }
+    return this.get<T>(`/api/workoutSummary/feed?${params.toString()}`);
+  }
+
+  /**
+   * Get detailed workout by ID
+   * @param userName - Username of the athlete
+   * @param id - Workout ID
+   */
+  async getWorkout<T = unknown>(userName: string, id: string): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      userName: userName,
+      id: id,
+    });
+    return this.get<T>(`/api/workoutSummary/getWorkout?${params.toString()}`);
+  }
+
+  /**
+   * Get workout data (samples and laps)
+   * @param workoutId - Workout ID
+   * @param userName - Username of the athlete
+   */
+  async getWorkoutData<T = { dataSamples: unknown[]; workoutLaps: unknown[] }>(
+    workoutId: string,
+    userName: string
+  ): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      workoutId: workoutId,
+      userName: userName,
+    });
+    return this.get<T>(`/api/workoutSummary/data?${params.toString()}`);
   }
 }
 
