@@ -8,6 +8,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
 import ThemeToggle from "../components/ThemeToggle";
@@ -22,6 +23,7 @@ interface AthleteCard {
 
 export default function AthletesPage() {
   const { user, loading: authLoading, logout } = useAuth();
+  const router = useRouter();
   const [athletes, setAthletes] = useState<AthleteCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -246,7 +248,15 @@ export default function AthletesPage() {
                       {athlete.athleteName}
                     </h3>
                     {/* Manage Button */}
-                    <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors">
+                    <button 
+                      onClick={() => {
+                        const athleteNameEncoded = encodeURIComponent(athlete.athleteName);
+                        const imageEncoded = athlete.imageData ? encodeURIComponent(athlete.imageData) : '';
+                        const url = `/athlete/${athleteNameEncoded}${imageEncoded ? `?image=${imageEncoded}` : ''}`;
+                        router.push(url);
+                      }}
+                      className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
+                    >
                       Manage
                     </button>
                   </div>
