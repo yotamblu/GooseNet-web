@@ -107,18 +107,18 @@ export default function FlocksPage() {
     <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
+        <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="/logo/goosenet_logo.png"
               alt="GooseNet"
               width={32}
               height={32}
-              className="h-8 w-auto"
+              className="h-6 w-auto sm:h-8"
             />
-            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">GooseNet</span>
+            <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">GooseNet</span>
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <ThemeToggle />
             {user?.profilePicString && (
               <img
@@ -134,7 +134,7 @@ export default function FlocksPage() {
             )}
             <button
               onClick={handleLogout}
-              className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               Logout
             </button>
@@ -143,7 +143,7 @@ export default function FlocksPage() {
       </header>
 
       {/* Main Content */}
-      <main className="relative flex-1 px-6 py-12 sm:px-6 sm:py-24 overflow-hidden">
+      <main className="relative flex-1 px-4 py-8 sm:px-6 sm:py-12 lg:py-24 overflow-hidden">
         {/* Glowing purple/blue background effects */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-500/30 dark:bg-purple-500/20 rounded-full blur-3xl"></div>
@@ -155,35 +155,56 @@ export default function FlocksPage() {
 
         <div className="relative mx-auto max-w-7xl">
           {/* Header Section */}
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-5xl">
+          <div className="mb-6 sm:mb-8">
+            <div className="mb-4 sm:mb-6">
+              <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100 lg:text-5xl">
                 My Flocks
               </h1>
-              <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
+              <p className="mt-2 sm:mt-4 text-base sm:text-lg text-gray-600 dark:text-gray-400">
                 View and manage all your athlete groups
               </p>
             </div>
-            <Link
-              href="/dashboard"
-              className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Back to Dashboard
-            </Link>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+              <Link
+                href="/flocks/create"
+                className="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 sm:py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Create Flock
+              </Link>
+              <Link
+                href="/dashboard"
+                className="w-full sm:w-auto rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 sm:py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-center"
+              >
+                Back to Dashboard
+              </Link>
+            </div>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mb-6 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
-              <p className="text-red-800 dark:text-red-200">{error}</p>
+            <div className="mb-4 sm:mb-6 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 sm:p-4">
+              <p className="text-sm sm:text-base text-red-800 dark:text-red-200">{error}</p>
             </div>
           )}
 
           {/* Flocks Grid */}
           {!Array.isArray(flocks) || (flocks.length === 0 && !error) ? (
-            <div className="text-center py-12">
+            <div className="text-center py-8 sm:py-12">
               <svg
-                className="mx-auto h-12 w-12 text-gray-400"
+                className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -195,35 +216,38 @@ export default function FlocksPage() {
                   d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                 />
               </svg>
-              <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">No flocks found</h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              <h3 className="mt-2 text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">No flocks found</h3>
+              <p className="mt-1 text-sm sm:text-base text-gray-500 dark:text-gray-400 px-4">
                 Get started by creating your first flock.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {Array.isArray(flocks) && flocks.map((flock, index) => (
                 <div
                   key={index}
-                  className="relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 hover:shadow-xl transition-shadow"
+                  className="relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow"
                 >
                   <div className="flex flex-col items-center text-center">
                     {/* Flock Profile Pic - First Character */}
-                    <div className="mb-4">
-                      <div className="h-24 w-24 rounded-full border-2 border-gray-300 dark:border-gray-700 bg-gradient-to-br from-blue-500 to-purple-600 dark:from-blue-600 dark:to-purple-700 flex items-center justify-center">
-                        <span className="text-4xl font-bold text-white">
+                    <div className="mb-3 sm:mb-4">
+                      <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full border-2 border-gray-300 dark:border-gray-700 bg-gradient-to-br from-blue-500 to-purple-600 dark:from-blue-600 dark:to-purple-700 flex items-center justify-center">
+                        <span className="text-3xl sm:text-4xl font-bold text-white">
                           {getFirstChar(flock)}
                         </span>
                       </div>
                     </div>
                     {/* Flock Name */}
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 sm:mb-4 break-words">
                       {flock}
                     </h3>
                     {/* Manage Button */}
-                    <button className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors">
+                    <Link
+                      href={`/flocks/manage/${encodeURIComponent(flock)}`}
+                      className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors text-center block"
+                    >
                       Manage
-                    </button>
+                    </Link>
                   </div>
                 </div>
               ))}

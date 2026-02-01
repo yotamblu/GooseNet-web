@@ -341,6 +341,69 @@ class ApiService {
     return this.get<T>(`/api/flocks/getFlocks?apiKey=${encodeURIComponent(apiKey)}`);
   }
 
+  /**
+   * Create a new flock for a coach
+   * @param apiKey - The coach's API key
+   * @param flockName - The name of the flock to create
+   */
+  async createFlock<T = unknown>(apiKey: string, flockName: string): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      apiKey: apiKey,
+      flockName: flockName,
+    });
+    return this.post<T>(
+      `/api/flocks/createFlock?${params.toString()}`,
+      undefined
+    );
+  }
+
+  /**
+   * Get all athletes in a specific flock
+   * @param apiKey - The coach's API key
+   * @param flockName - The name of the flock
+   */
+  async getFlockAthletes<T = unknown>(apiKey: string, flockName: string): Promise<ApiResponse<T>> {
+    return this.get<T>(`/api/flocks/flockAthletes?apiKey=${encodeURIComponent(apiKey)}&flockName=${encodeURIComponent(flockName)}`);
+  }
+
+  /**
+   * Add an athlete to a flock
+   * @param apiKey - The coach's API key
+   * @param athleteUserName - The username of the athlete to add
+   * @param flockName - The name of the flock
+   */
+  async addToFlock<T = unknown>(apiKey: string, athleteUserName: string, flockName: string): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      apiKey: apiKey,
+    });
+    return this.post<T>(
+      `/api/flocks/addToFlock?${params.toString()}`,
+      {
+        athleteUserName: athleteUserName,
+        flockName: flockName,
+      }
+    );
+  }
+
+  /**
+   * Remove an athlete from a flock
+   * @param apiKey - The coach's API key
+   * @param flockName - The name of the flock
+   * @param athleteName - The name of the athlete to remove
+   */
+  async removeAthleteFromFlock<T = unknown>(apiKey: string, flockName: string, athleteName: string): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      apiKey: apiKey,
+    });
+    return this.post<T>(
+      `/api/flocks/removeAthlete?${params.toString()}`,
+      {
+        FlockName: flockName,
+        AthleteName: athleteName,
+      }
+    );
+  }
+
   // ==================== Garmin OAuth Methods ====================
 
   /**
