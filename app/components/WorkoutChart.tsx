@@ -105,18 +105,18 @@ export default function WorkoutChart({
     return `${minutes}:${secs.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Handle mouse move
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+  // Handle pointer position (works for both mouse and touch)
+  const handlePointerPosition = (clientX: number, clientY: number) => {
     if (!svgRef.current || !containerRef.current || points.length === 0) return;
 
     const rect = svgRef.current.getBoundingClientRect();
     const containerRect = containerRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    const pointerX = clientX - rect.left;
+    const pointerY = clientY - rect.top;
 
-    // Convert mouse position to SVG coordinates
-    const svgX = (mouseX / rect.width) * width;
-    const svgY = (mouseY / rect.height) * height;
+    // Convert pointer position to SVG coordinates
+    const svgX = (pointerX / rect.width) * width;
+    const svgY = (pointerY / rect.height) * height;
 
     // Find the closest data point
     let closestIndex = 0;
@@ -130,19 +130,20 @@ export default function WorkoutChart({
       }
     });
 
-    // Only show tooltip if mouse is near the line (within reasonable distance)
-    const threshold = 50; // pixels
+    // Show tooltip if pointer is near the line (within reasonable distance)
+    // Use a larger threshold for touch devices
+    const threshold = 100; // pixels (increased for touch)
     const closestPoint = points[closestIndex];
     const distance = Math.sqrt(
-      Math.pow((closestPoint.x / width) * rect.width - mouseX, 2) +
-      Math.pow((closestPoint.y / height) * rect.height - mouseY, 2)
+      Math.pow((closestPoint.x / width) * rect.width - pointerX, 2) +
+      Math.pow((closestPoint.y / height) * rect.height - pointerY, 2)
     );
 
     if (distance < threshold) {
       setHoveredIndex(closestIndex);
       setTooltipPosition({
-        x: e.clientX - containerRect.left,
-        y: e.clientY - containerRect.top,
+        x: clientX - containerRect.left,
+        y: clientY - containerRect.top,
       });
     } else {
       setHoveredIndex(null);
@@ -150,9 +151,31 @@ export default function WorkoutChart({
     }
   };
 
+  // Handle mouse move
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    handlePointerPosition(e.clientX, e.clientY);
+  };
+
+  // Handle touch move (for mobile)
+  const handleTouchMove = (e: React.TouchEvent<SVGSVGElement>) => {
+    e.preventDefault(); // Prevent scrolling when touching the chart
+    if (e.touches.length > 0) {
+      const touch = e.touches[0];
+      handlePointerPosition(touch.clientX, touch.clientY);
+    }
+  };
+
   const handleMouseLeave = () => {
     setHoveredIndex(null);
     setTooltipPosition(null);
+  };
+
+  const handleTouchEnd = () => {
+    // Keep tooltip visible briefly on touch end, then hide it
+    setTimeout(() => {
+      setHoveredIndex(null);
+      setTooltipPosition(null);
+    }, 2000); // Hide after 2 seconds
   };
 
   const hoveredPoint = hoveredIndex !== null ? points[hoveredIndex] : null;
@@ -170,11 +193,13 @@ export default function WorkoutChart({
         <svg
           ref={svgRef}
           viewBox={`0 0 ${width} ${height}`}
-          className="w-full cursor-crosshair"
+          className="w-full cursor-crosshair touch-none"
           preserveAspectRatio="none"
-          style={{ minHeight: `${height}px` }}
+          style={{ minHeight: `${height}px`, touchAction: 'none' }}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           {/* Grid lines */}
           {gridLines.map((grid, index) => (

@@ -7,7 +7,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import ThemeToggle from "../components/ThemeToggle";
@@ -17,6 +17,7 @@ import { apiService } from "../services/api";
 import { useAuth } from "../../context/AuthContext";
 import ZoomableWorkoutMap from "../components/ZoomableWorkoutMap";
 import WorkoutChart from "../components/WorkoutChart";
+import LapBarChart from "../components/LapBarChart";
 
 interface WorkoutLap {
   lapDistanceInKilometers: number;
@@ -72,6 +73,22 @@ export default function WorkoutDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [coords, setCoords] = useState<[number, number][]>([]);
   const [profilePicData, setProfilePicData] = useState<string>("");
+  const [selectedLapIndex, setSelectedLapIndex] = useState<number | null>(null);
+  const lapRowRefs = useRef<(HTMLTableRowElement | null)[]>([]);
+
+  // Handle lap selection with scroll
+  const handleLapSelection = (index: number) => {
+    setSelectedLapIndex(index);
+    // Scroll to the corresponding table row
+    if (lapRowRefs.current[index]) {
+      setTimeout(() => {
+        lapRowRefs.current[index]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }, 100); // Small delay to ensure DOM is updated
+    }
+  };
 
   useEffect(() => {
     const fetchWorkoutData = async () => {
@@ -436,6 +453,90 @@ export default function WorkoutDetailPage() {
             </div>
           )}
 
+          {/* Lap Bar Chart and Table */}
+          <div className="space-y-6 mb-8">
+            {/* Lap Bar Chart */}
+            {workoutData && workoutData.workoutLaps.length > 0 && (
+              <LapBarChart 
+                laps={workoutData.workoutLaps} 
+                selectedLapIndex={selectedLapIndex}
+                onLapClick={handleLapSelection}
+              />
+            )}
+
+            {/* Laps Table */}
+            {workoutData && workoutData.workoutLaps.length > 0 && (
+              <div 
+                className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 cursor-pointer"
+                onClick={(e) => {
+                  const target = e.target as HTMLElement;
+                  // If clicking on the container, title, or empty table area (not on a row), deselect
+                  if (target === e.currentTarget || 
+                      target.tagName === 'H2' || 
+                      target.tagName === 'DIV' && target.classList.contains('overflow-x-auto') ||
+                      target.tagName === 'TABLE' || 
+                      target.tagName === 'THEAD' ||
+                      target.tagName === 'TH') {
+                    setSelectedLapIndex(null);
+                  }
+                }}
+              >
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Laps</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Lap</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Distance</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Duration</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Pace</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Avg HR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {workoutData.workoutLaps.map((lap, index) => {
+                    const isSelected = selectedLapIndex === index;
+                    return (
+                    <tr
+                      key={index}
+                      ref={(el) => {
+                        lapRowRefs.current[index] = el;
+                      }}
+                      className={`border-b border-gray-100 dark:border-gray-800 transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-500 dark:ring-blue-400'
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent container click
+                        handleLapSelection(index);
+                      }}
+                    >
+                      <td className="py-3 px-4 text-sm text-gray-900 dark:text-gray-100 font-medium">
+                        {index + 1}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300 text-right">
+                        {lap.lapDistanceInKilometers.toFixed(2)} km
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300 text-right">
+                        {formatDuration(lap.lapDurationInSeconds)}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300 text-right">
+                        {formatPace(lap.lapPaceInMinKm)} /km
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300 text-right">
+                        {formatHR(lap.avgHeartRate)} bpm
+                      </td>
+                    </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+            )}
+          </div>
+
           {/* Charts Section */}
           <div className="space-y-6 mb-8">
             <WorkoutChart
@@ -472,48 +573,6 @@ export default function WorkoutDetailPage() {
               maxValue={Math.max(...elevationData, 1000)}
               timeData={timeData}
             />
-          </div>
-
-          {/* Laps Table */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Laps</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Lap</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Distance</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Duration</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Pace</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Avg HR</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {workoutData.workoutLaps.map((lap, index) => (
-                    <tr
-                      key={index}
-                      className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                    >
-                      <td className="py-3 px-4 text-sm text-gray-900 dark:text-gray-100 font-medium">
-                        {index + 1}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300 text-right">
-                        {lap.lapDistanceInKilometers.toFixed(2)} km
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300 text-right">
-                        {formatDuration(lap.lapDurationInSeconds)}
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300 text-right">
-                        {formatPace(lap.lapPaceInMinKm)} /km
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-700 dark:text-gray-300 text-right">
-                        {formatHR(lap.avgHeartRate)} bpm
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </div>
         </div>
       </main>
