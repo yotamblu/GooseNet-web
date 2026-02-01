@@ -378,12 +378,16 @@ export default function RunningWorkoutFormPage() {
     setShowSuccess(false);
 
     try {
-      // Get athlete name and image from URL params
+      // Get athlete name and image from URL params, or flock name
       const athleteName = searchParams?.get("athlete") || "";
       const athleteImage = searchParams?.get("image") || "";
+      const flockName = searchParams?.get("flock") || "";
       
-      if (!athleteName) {
-        throw new Error("Athlete name is required");
+      const isFlock = !!flockName;
+      const targetName = isFlock ? flockName : athleteName;
+      
+      if (!targetName) {
+        throw new Error(isFlock ? "Flock name is required" : "Athlete name is required");
       }
 
       const garminJson = buildGarminJson();
@@ -391,8 +395,8 @@ export default function RunningWorkoutFormPage() {
       const formattedDate = formatDate(workoutDate);
 
       const requestBody = {
-        targetName: athleteName,
-        isFlock: false,
+        targetName: targetName,
+        isFlock: isFlock,
         jsonBody: jsonBody,
         date: formattedDate,
       };
@@ -408,12 +412,16 @@ export default function RunningWorkoutFormPage() {
 
       if (response.status === 200) {
         setShowSuccess(true);
-        // Reset form after a delay and redirect with image if available
+        // Reset form after a delay and redirect
         setTimeout(() => {
-          const athleteUrl = athleteImage
-            ? `/athlete/${encodeURIComponent(athleteName)}?image=${encodeURIComponent(athleteImage)}`
-            : `/athlete/${encodeURIComponent(athleteName)}`;
-          router.push(athleteUrl);
+          if (isFlock) {
+            router.push(`/flocks/manage/${encodeURIComponent(flockName)}`);
+          } else {
+            const athleteUrl = athleteImage
+              ? `/athlete/${encodeURIComponent(athleteName)}?image=${encodeURIComponent(athleteImage)}`
+              : `/athlete/${encodeURIComponent(athleteName)}`;
+            router.push(athleteUrl);
+          }
         }, 2000);
       } else {
         throw new Error(`Failed to create workout: ${response.message || "Unknown error"}`);

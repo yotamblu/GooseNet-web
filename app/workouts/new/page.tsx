@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import ThemeToggle from "../../components/ThemeToggle";
@@ -13,6 +13,23 @@ import Footer from "../../components/Footer";
 
 export default function WorkoutTypeSelectionPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const flockName = searchParams?.get("flock") || "";
+  const athleteName = searchParams?.get("athlete") || "";
+  
+  // Build query string for navigation
+  const buildQueryString = () => {
+    const params = new URLSearchParams();
+    if (flockName) {
+      params.append("flock", flockName);
+    }
+    if (athleteName) {
+      params.append("athlete", athleteName);
+    }
+    return params.toString();
+  };
+  
+  const queryString = buildQueryString();
 
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
@@ -46,15 +63,37 @@ export default function WorkoutTypeSelectionPage() {
         <div className="relative mx-auto max-w-4xl">
           {/* Back Button */}
           <div className="mb-6">
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back to Dashboard
-            </Link>
+            {flockName ? (
+              <Link
+                href={`/flocks/manage/${encodeURIComponent(flockName)}`}
+                className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to Flock
+              </Link>
+            ) : athleteName ? (
+              <Link
+                href={`/athlete/${encodeURIComponent(athleteName)}`}
+                className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to Athlete
+              </Link>
+            ) : (
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to Dashboard
+              </Link>
+            )}
           </div>
 
           {/* Page Title */}
@@ -71,7 +110,7 @@ export default function WorkoutTypeSelectionPage() {
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             {/* Running Workout Card */}
             <button
-              onClick={() => router.push("/workouts/new/running")}
+              onClick={() => router.push(`/workouts/new/running${queryString ? `?${queryString}` : ''}`)}
               className="cursor-pointer relative bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg p-8 hover:shadow-xl hover:border-blue-600 dark:hover:border-blue-400 transition-all flex flex-col items-center text-center"
             >
               <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-blue-600 mb-4">
