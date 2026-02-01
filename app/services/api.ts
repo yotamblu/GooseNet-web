@@ -511,7 +511,9 @@ class ApiService {
       userName: userName,
       id: id,
     });
-    return this.get<T>(`/api/workoutSummary/getWorkout?${params.toString()}`);
+    return this.get<T>(`/api/workoutSummary/getWorkout?${params.toString()}`, {
+      requiresAuth: false,
+    });
   }
 
   /**
@@ -524,10 +526,26 @@ class ApiService {
     userName: string
   ): Promise<ApiResponse<T>> {
     const params = new URLSearchParams({
+      userName: userName,
       workoutId: workoutId,
+    });
+    return this.get<T>(`/api/workoutSummary/data?${params.toString()}`, {
+      requiresAuth: false,
+    });
+  }
+
+  /**
+   * Get profile picture for a user
+   * @param userName - Username of the user
+   * @returns Response with profile picture data (text/string)
+   */
+  async getProfilePic(userName: string): Promise<ApiResponse<string>> {
+    const params = new URLSearchParams({
       userName: userName,
     });
-    return this.get<T>(`/api/workoutSummary/data?${params.toString()}`);
+    return this.get<string>(`/api/profilePic?${params.toString()}`, {
+      requiresAuth: false,
+    });
   }
 }
 

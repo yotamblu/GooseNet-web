@@ -502,9 +502,10 @@ export default function ActivitiesPage() {
                       }
 
                       return (
-                        <div
+                        <Link
+                          href={`/workout?userName=${encodeURIComponent(workout.athleteName)}&workoutId=${workout.workoutId}`}
                           key={workout.workoutId || `running-${index}`}
-                          className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden hover:shadow-xl hover:scale-105 transition-all duration-300"
+                          className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer block"
                         >
                           <div className="flex flex-col lg:flex-row">
                             {/* Left Side: All Data */}
@@ -566,7 +567,7 @@ export default function ActivitiesPage() {
                               </div>
                             )}
                           </div>
-                        </div>
+                        </Link>
                       );
                       } else {
                         const workout = item.workout as StrengthWorkout;
