@@ -206,7 +206,7 @@ export default function AthleteDashboardPage() {
 
             {/* Add Workout Card */}
             <Link 
-              href={`/workouts/new/running?athlete=${encodeURIComponent(athleteName)}${athleteImage ? `&image=${encodeURIComponent(athleteImage)}` : ''}`}
+              href={`/workouts/new?athlete=${encodeURIComponent(athleteName)}${athleteImage ? `&image=${encodeURIComponent(athleteImage)}` : ''}`}
               className="cursor-pointer relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 hover:shadow-xl transition-shadow flex flex-col"
             >
               <div className="flex items-center gap-4 mb-4">

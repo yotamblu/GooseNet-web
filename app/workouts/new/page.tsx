@@ -16,6 +16,7 @@ export default function WorkoutTypeSelectionPage() {
   const searchParams = useSearchParams();
   const flockName = searchParams?.get("flock") || "";
   const athleteName = searchParams?.get("athlete") || "";
+  const athleteImage = searchParams?.get("image") || "";
   
   // Build query string for navigation
   const buildQueryString = () => {
@@ -25,6 +26,9 @@ export default function WorkoutTypeSelectionPage() {
     }
     if (athleteName) {
       params.append("athlete", athleteName);
+    }
+    if (athleteImage) {
+      params.append("image", athleteImage);
     }
     return params.toString();
   };
@@ -127,8 +131,11 @@ export default function WorkoutTypeSelectionPage() {
             </button>
 
             {/* Strength Workout Card */}
-            <div className="relative bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg p-8 flex flex-col items-center text-center opacity-60 cursor-not-allowed">
-              <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-gray-400 dark:bg-gray-600 mb-4">
+            <button
+              onClick={() => router.push(`/workouts/new/strength${queryString ? `?${queryString}` : ''}`)}
+              className="cursor-pointer relative bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg p-8 hover:shadow-xl hover:border-blue-600 dark:hover:border-blue-400 transition-all flex flex-col items-center text-center"
+            >
+              <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-blue-600 mb-4">
                 <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
@@ -137,9 +144,9 @@ export default function WorkoutTypeSelectionPage() {
                 Strength Workout
               </h2>
               <p className="text-gray-600 dark:text-gray-400">
-                Coming soon - Create strength training workouts with exercises and sets
+                Create strength training workouts with exercises, sets, and reps
               </p>
-            </div>
+            </button>
           </div>
         </div>
       </main>
