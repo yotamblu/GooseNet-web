@@ -50,7 +50,7 @@ interface StrengthWorkout {
   workoutDrills: WorkoutDrill[];
   athleteNames: string[];
   workoutReviews: Record<string, WorkoutReview>;
-  workoutId: string;
+  workoutId: string | null;
 }
 
 interface WorkoutFeedResponse {
@@ -152,7 +152,18 @@ export default function ActivitiesPage() {
         const running = Array.isArray(response.data.runningWorkouts) 
           ? response.data.runningWorkouts.map(parseWorkout)
           : [];
-        const strength = Array.isArray(response.data.strengthWorkouts) ? response.data.strengthWorkouts : [];
+        const strength = Array.isArray(response.data.strengthWorkouts) 
+          ? response.data.strengthWorkouts.map((w: any) => ({
+              coachName: w.coachName || w.CoachName || "",
+              workoutName: w.workoutName || w.WorkoutName || "Strength Workout",
+              workoutDescription: w.workoutDescription || w.WorkoutDescription || "",
+              workoutDate: w.workoutDate || w.WorkoutDate || "",
+              workoutDrills: w.workoutDrills || w.WorkoutDrills || [],
+              athleteNames: w.athleteNames || w.AthleteNames || [],
+              workoutReviews: w.workoutReviews || w.WorkoutReviews || {},
+              workoutId: w.workoutId || w.WorkoutId || null,
+            }))
+          : [];
         setRunningWorkouts(running);
         setStrengthWorkouts(strength);
       }
@@ -223,7 +234,16 @@ export default function ActivitiesPage() {
             })
           : [];
         const strength = Array.isArray(response.data.strengthWorkouts) 
-          ? response.data.strengthWorkouts 
+          ? response.data.strengthWorkouts.map((w: any) => ({
+              coachName: w.coachName || w.CoachName || "",
+              workoutName: w.workoutName || w.WorkoutName || "Strength Workout",
+              workoutDescription: w.workoutDescription || w.WorkoutDescription || "",
+              workoutDate: w.workoutDate || w.WorkoutDate || "",
+              workoutDrills: w.workoutDrills || w.WorkoutDrills || [],
+              athleteNames: w.athleteNames || w.AthleteNames || [],
+              workoutReviews: w.workoutReviews || w.WorkoutReviews || {},
+              workoutId: w.workoutId || w.WorkoutId || null,
+            }))
           : [];
 
         if (loadMore) {
@@ -308,6 +328,44 @@ export default function ActivitiesPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user is a coach and no athlete parameter is provided
+  const athleteParam = searchParams.get("athlete");
+  if (user && user.role?.toLowerCase() === "coach" && !athleteParam) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+        <div className="text-center">
+          <div className="mb-4">
+            <svg
+              className="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            No Access
+          </h2>
+          <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
+            Please select an athlete to view their activities.
+          </p>
+          <Link
+            href="/dashboard"
+            className="inline-block rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
+          >
+            Return to Dashboard
+          </Link>
         </div>
       </div>
     );
@@ -575,78 +633,87 @@ export default function ActivitiesPage() {
                           ? workout.workoutReviews[workout.athleteNames[0]]
                           : null;
 
+                        // Convert workoutId to string if it exists, handle null/undefined
+                        const workoutIdStr = workout.workoutId ? String(workout.workoutId) : null;
+
                         return (
-                          <div
-                            key={workout.workoutId || `strength-${index}`}
-                            className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 hover:shadow-xl hover:scale-105 transition-all duration-300"
+                          <Link
+                            href={workoutIdStr ? `/strength-workout/${workoutIdStr}` : '#'}
+                            key={workoutIdStr || `strength-${index}`}
+                            onClick={(e) => {
+                              if (!workoutIdStr) {
+                                e.preventDefault();
+                              }
+                            }}
+                            className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden p-6 block ${workoutIdStr ? 'hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
                           >
-                          {/* Header with icon */}
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                                <svg className="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                </svg>
+                            {/* Header with icon */}
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/40 dark:to-purple-800/40 flex-shrink-0 shadow-sm">
+                                  <svg className="h-7 w-7 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                  </svg>
+                                </div>
+                                <div className="flex-1">
+                                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
+                                    {workout.workoutName || "Strength Workout"}
+                                  </h3>
+                                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
+                                    {workout.workoutDate}
+                                  </p>
+                                </div>
                               </div>
-                              <div>
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                                  {workout.workoutName || "Strength Workout"}
-                                </h3>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                  {workout.workoutDate}
+                            </div>
+
+                            {/* Workout Description */}
+                            {workout.workoutDescription && (
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                                {workout.workoutDescription}
+                              </p>
+                            )}
+
+                            {/* Drills */}
+                            {workout.workoutDrills && workout.workoutDrills.length > 0 && (
+                              <div className="mb-4">
+                                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                                  Drills:
+                                </h4>
+                                <div className="space-y-1">
+                                  {workout.workoutDrills.map((drill, drillIndex) => (
+                                    <div key={drillIndex} className="text-sm text-gray-600 dark:text-gray-400">
+                                      • {drill.drillName} - {drill.drillSets} sets × {drill.drillReps} reps
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Review */}
+                            {review && (
+                              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                    Review
+                                  </span>
+                                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                                    Difficulty: {review.difficultyLevel}/10
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  {review.reviewContent}
                                 </p>
                               </div>
-                            </div>
-                          </div>
+                            )}
 
-                          {/* Workout Description */}
-                          {workout.workoutDescription && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                              {workout.workoutDescription}
-                            </p>
-                          )}
-
-                          {/* Drills */}
-                          {workout.workoutDrills && workout.workoutDrills.length > 0 && (
-                            <div className="mb-4">
-                              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                                Drills:
-                              </h4>
-                              <div className="space-y-1">
-                                {workout.workoutDrills.map((drill, drillIndex) => (
-                                  <div key={drillIndex} className="text-sm text-gray-600 dark:text-gray-400">
-                                    • {drill.drillName} - {drill.drillSets} sets × {drill.drillReps} reps
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Review */}
-                          {review && (
-                            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                  Review
-                                </span>
-                                <span className="text-sm text-gray-600 dark:text-gray-400">
-                                  Difficulty: {review.difficultyLevel}/10
-                                </span>
-                              </div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {review.reviewContent}
+                            {/* Coach Name */}
+                            {workout.coachName && (
+                              <p className="text-xs text-gray-500 dark:text-gray-500 mt-4">
+                                Coach: {workout.coachName}
                               </p>
-                            </div>
-                          )}
-
-                          {/* Coach Name */}
-                          {workout.coachName && (
-                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-4">
-                              Coach: {workout.coachName}
-                            </p>
-                          )}
-                        </div>
-                      );
+                            )}
+                          </Link>
+                        );
                       }
                     })}
                   </div>

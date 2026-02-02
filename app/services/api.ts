@@ -610,6 +610,37 @@ class ApiService {
       requiresAuth: false,
     });
   }
+
+  /**
+   * Get strength workout details by ID
+   * @param workoutId - Strength workout ID
+   */
+  async getStrengthWorkout<T = unknown>(workoutId: string): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      id: workoutId,
+    });
+    return this.get<T>(`/api/strength/workout?${params.toString()}`, {
+      requiresAuth: false,
+    });
+  }
+
+  /**
+   * Submit strength workout review
+   * @param apiKey - API key for authorization
+   * @param workoutId - Strength workout ID
+   * @param review - Review data
+   */
+  async submitStrengthWorkoutReview<T = unknown>(
+    apiKey: string,
+    workoutId: string,
+    review: { athleteName: string; reviewContent: string; difficultyLevel: number }
+  ): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      apiKey: apiKey,
+      workoutId: workoutId,
+    });
+    return this.post<T>(`/api/strength/reviews?${params.toString()}`, review);
+  }
 }
 
 // Export singleton instance
