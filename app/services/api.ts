@@ -641,6 +641,76 @@ class ApiService {
     });
     return this.post<T>(`/api/strength/reviews?${params.toString()}`, review);
   }
+
+  // ==================== Planned Workout Methods ====================
+
+  /**
+   * Get planned workout feed with pagination
+   * @param apiKey - API key for authorization
+   * @param athleteName - Name of the athlete
+   * @param runningCursor - Optional cursor for running workouts pagination
+   * @param strengthCursor - Optional cursor for strength workouts pagination
+   */
+  async getPlannedWorkoutFeed<T = {
+    runningWorkouts: unknown[];
+    strengthWorkouts: unknown[];
+    runningNextCursor: string | null;
+    strengthNextCursor: string | null;
+  }>(
+    apiKey: string,
+    athleteName: string,
+    runningCursor?: string | null,
+    strengthCursor?: string | null
+  ): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      apiKey: apiKey,
+      athleteName: athleteName,
+    });
+    if (runningCursor) {
+      params.append("runningCursor", runningCursor);
+    }
+    if (strengthCursor) {
+      params.append("strengthCursor", strengthCursor);
+    }
+    return this.get<T>(`/api/planned/feed?${params.toString()}`);
+  }
+
+  /**
+   * Get planned workouts by date
+   * @param apiKey - API key for authorization
+   * @param athleteName - Name of the athlete
+   * @param date - Date in format "MM/dd/yyyy" or "M/d/yyyy"
+   */
+  async getPlannedWorkoutsByDate<T = {
+    runningWorkouts: unknown[];
+    strengthWorkouts: unknown[];
+  }>(
+    apiKey: string,
+    athleteName: string,
+    date: string
+  ): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      apiKey: apiKey,
+      athleteName: athleteName,
+      date: date,
+    });
+    return this.get<T>(`/api/plannedWorkout/byDate?${params.toString()}`);
+  }
+
+  /**
+   * Get planned workout by ID
+   * @param id - Planned workout ID
+   */
+  async getPlannedWorkoutById<T = unknown>(
+    id: string
+  ): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      id: id,
+    });
+    return this.get<T>(`/api/plannedWorkout/byId?${params.toString()}`, {
+      requiresAuth: false,
+    });
+  }
 }
 
 // Export singleton instance
