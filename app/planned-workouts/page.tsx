@@ -237,62 +237,99 @@ export default function PlannedWorkoutsPage() {
   const convertIntervalsToLaps = (intervals: WorkoutInterval[]): Lap[] => {
     const laps: Lap[] = [];
 
-    const processInterval = (interval: WorkoutInterval, repeatCount: number = 1) => {
-      // If interval has nested steps, process them
-      if (interval.steps && interval.steps.length > 0) {
-        const actualRepeat = interval.repeatValue || 1;
-        for (let i = 0; i < actualRepeat * repeatCount; i++) {
-          interval.steps.forEach(step => processInterval(step, 1));
+    const processStep = (step: WorkoutInterval) => {
+      const isRest = step.intensity === "REST" || step.intensity === "rest";
+      
+      let lapDistance = 0;
+      let lapDuration = 0;
+      let lapPace = 0;
+      
+      // For rest intervals, use a consistent slow pace (10 min/km) so they all appear at the same height
+      if (isRest) {
+        lapPace = 10; // Consistent slow pace for all rest intervals
+        
+        // Calculate distance and duration based on durationType
+        if (step.durationType === "DISTANCE" || step.durationType === "distance") {
+          // Distance in meters, convert to km
+          lapDistance = step.durationValue / 1000;
+          // Calculate duration from distance and pace: time = distance * pace
+          lapDuration = lapDistance * lapPace * 60; // pace in min/km, convert to seconds
+        } else if (step.durationType === "TIME" || step.durationType === "time") {
+          // Duration in seconds
+          lapDuration = step.durationValue;
+          // Calculate distance from duration and pace: distance = time / (pace * 60)
+          lapDistance = lapDuration / (lapPace * 60); // distance in km
+        } else {
+          // Skip if no duration type
+          return;
         }
       } else {
-        // This is a leaf interval - convert to lap
-        // Skip if it's a rest interval
-        if (interval.intensity === "REST" || interval.intensity === "rest") {
+        // For running intervals, use actual pace data
+        // Skip if no valid pace data
+        if (!step.targetValueLow && !step.targetValueHigh) {
           return;
         }
 
-        const actualRepeat = (interval.repeatValue || 1) * repeatCount;
-        
-        for (let i = 0; i < actualRepeat; i++) {
-          let lapDistance = 0;
-          let lapDuration = 0;
-          
-          // Convert pace from m/s to min/km
-          const avgSpeedMps = (interval.targetValueLow + interval.targetValueHigh) / 2;
-          const lapPace = metersPerSecondToMinPerKm(avgSpeedMps);
-          
-          // Calculate distance and duration based on durationType
-          if (interval.durationType === "DISTANCE" || interval.durationType === "distance") {
-            // Distance in meters, convert to km
-            lapDistance = interval.durationValue / 1000;
-            // Calculate duration from distance and pace: time = distance * pace
-            lapDuration = lapDistance * lapPace * 60; // pace in min/km, convert to seconds
-          } else if (interval.durationType === "TIME" || interval.durationType === "time") {
-            // Duration in seconds
-            lapDuration = interval.durationValue;
-            // Calculate distance from duration and pace: distance = time / (pace * 60)
-            lapDistance = lapDuration / (lapPace * 60); // distance in km
-          } else {
-            // Default: assume time-based if durationType is null or unknown
-            lapDuration = interval.durationValue || 60; // default 60 seconds
-            lapDistance = lapDuration / (lapPace * 60);
-          }
-          
-          // Only add lap if it has valid data
-          if (lapDistance > 0 && lapDuration > 0 && lapPace > 0) {
-            laps.push({
-              lapDistanceInKilometers: lapDistance,
-              lapDurationInSeconds: lapDuration,
-              lapPaceInMinKm: lapPace,
-              avgHeartRate: 0, // Not available in planned workouts
-            });
-          }
+        // Convert pace from m/s to min/km
+        const avgSpeedMps = (step.targetValueLow + step.targetValueHigh) / 2;
+        if (!avgSpeedMps || avgSpeedMps <= 0) {
+          return;
         }
+        lapPace = metersPerSecondToMinPerKm(avgSpeedMps);
+        
+        // Calculate distance and duration based on durationType
+        if (step.durationType === "DISTANCE" || step.durationType === "distance") {
+          // Distance in meters, convert to km
+          lapDistance = step.durationValue / 1000;
+          // Calculate duration from distance and pace: time = distance * pace
+          lapDuration = lapDistance * lapPace * 60; // pace in min/km, convert to seconds
+        } else if (step.durationType === "TIME" || step.durationType === "time") {
+          // Duration in seconds
+          lapDuration = step.durationValue;
+          // Calculate distance from duration and pace: distance = time / (pace * 60)
+          lapDistance = lapDuration / (lapPace * 60); // distance in km
+        } else {
+          // Skip if no duration type
+          return;
+        }
+      }
+      
+      // Only add lap if it has valid data
+      if (lapDistance > 0 && lapDuration > 0 && lapPace > 0) {
+        laps.push({
+          lapDistanceInKilometers: lapDistance,
+          lapDurationInSeconds: lapDuration,
+          lapPaceInMinKm: lapPace,
+          avgHeartRate: 0, // Not available in planned workouts
+        });
       }
     };
 
-    // Process all intervals
-    intervals.forEach(interval => processInterval(interval, 1));
+    const processInterval = (interval: WorkoutInterval) => {
+      // If interval has nested steps (WorkoutRepeatStep)
+      if (interval.steps && interval.steps.length > 0) {
+        const repeatCount = interval.repeatValue || 1;
+        // Repeat the entire block of steps
+        for (let i = 0; i < repeatCount; i++) {
+          // Process each step in the block
+          interval.steps.forEach(step => {
+            // If step has nested steps, process recursively
+            if (step.steps && step.steps.length > 0) {
+              processInterval(step);
+            } else {
+              // This is a leaf step - process it
+              processStep(step);
+            }
+          });
+        }
+      } else {
+        // This is a leaf interval without nested steps - process it directly
+        processStep(interval);
+      }
+    };
+
+    // Process all top-level intervals
+    intervals.forEach(interval => processInterval(interval));
 
     return laps;
   };
