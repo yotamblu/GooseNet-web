@@ -6,12 +6,13 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import ThemeToggle from "../../components/ThemeToggle";
 import Footer from "../../components/Footer";
 
-export default function WorkoutTypeSelectionPage() {
+function WorkoutTypeSelectionPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const flockName = searchParams?.get("flock") || "";
@@ -152,6 +153,21 @@ export default function WorkoutTypeSelectionPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+export default function WorkoutTypeSelectionPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <WorkoutTypeSelectionPageContent />
+    </Suspense>
   );
 }
 

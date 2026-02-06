@@ -16,7 +16,7 @@ interface LapBarChartProps {
   laps: Lap[];
   className?: string;
   selectedLapIndex?: number | null;
-  onLapClick?: (index: number) => void;
+  onLapClick?: (index: number | null) => void;
 }
 
 export default function LapBarChart({ laps, className = "", selectedLapIndex = null, onLapClick }: LapBarChartProps) {

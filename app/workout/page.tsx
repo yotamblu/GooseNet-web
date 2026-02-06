@@ -7,7 +7,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import ThemeToggle from "../components/ThemeToggle";
@@ -51,7 +51,7 @@ interface WorkoutSummary {
   athleteName: string;
 }
 
-export default function WorkoutDetailPage() {
+function WorkoutDetailPageContent() {
   const { theme } = useTheme();
   const { user } = useAuth();
   const searchParams = useSearchParams();
@@ -77,10 +77,10 @@ export default function WorkoutDetailPage() {
   const lapRowRefs = useRef<(HTMLTableRowElement | null)[]>([]);
 
   // Handle lap selection with scroll
-  const handleLapSelection = (index: number) => {
+  const handleLapSelection = (index: number | null) => {
     setSelectedLapIndex(index);
-    // Scroll to the corresponding table row
-    if (lapRowRefs.current[index]) {
+    // Scroll to the corresponding table row if index is not null
+    if (index !== null && lapRowRefs.current[index]) {
       setTimeout(() => {
         lapRowRefs.current[index]?.scrollIntoView({
           behavior: 'smooth',
@@ -578,6 +578,21 @@ export default function WorkoutDetailPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+export default function WorkoutDetailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <WorkoutDetailPageContent />
+    </Suspense>
   );
 }
 

@@ -57,7 +57,7 @@ export default function FlockManagementPage() {
         
         // Fetch flock athletes and all athletes in parallel
         const [flockResponse, allAthletesResponse] = await Promise.all([
-          apiService.getFlockAthletes<{ athletes: FlockAthlete[] } | FlockAthlete[]>(user.apiKey, decodeURIComponent(flockName)),
+          apiService.getFlockAthletes<{ athletes: FlockAthlete[] } | FlockAthlete[] | string[]>(user.apiKey, decodeURIComponent(flockName)),
           apiService.getAthletes<{ athletesData: AllAthlete[] } | AllAthlete[]>(user.apiKey)
         ]);
         
@@ -70,12 +70,12 @@ export default function FlockManagementPage() {
         // Response structure: ["YotamBlumenkranz", ...] - just an array of strings
         let athletesData: FlockAthlete[] = [];
         if (Array.isArray(flockResponse.data)) {
-          // Response is an array of athlete names (strings)
-          athletesData = flockResponse.data.map((name: string) => ({
-            athleteName: name,
-            imageData: undefined,
-            imageLoading: true,
-          }));
+          // Response is an array of athlete names (strings) or FlockAthlete objects
+          athletesData = flockResponse.data.map((item: string | FlockAthlete) => 
+            typeof item === 'string' 
+              ? { athleteName: item, imageData: undefined, imageLoading: true }
+              : { ...item, imageLoading: true }
+          );
         } else if (flockResponse.data && typeof flockResponse.data === 'object') {
           const data = flockResponse.data as any;
           if (Array.isArray(data.athletes)) {
