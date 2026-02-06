@@ -711,6 +711,127 @@ class ApiService {
       requiresAuth: false,
     });
   }
+
+  // ==================== Sleep Data Methods ====================
+
+  /**
+   * Get sleep data feed with pagination
+   * @param apiKey - API key for authorization
+   * @param athleteName - Name of the athlete
+   * @param cursor - Optional cursor for pagination
+   */
+  async getSleepFeed<T = {
+    items: unknown[];
+    nextCursor: string | null;
+  }>(
+    apiKey: string,
+    athleteName: string,
+    cursor?: string | null
+  ): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      apiKey: apiKey,
+      athleteName: athleteName,
+    });
+    if (cursor) {
+      params.append("cursor", cursor);
+    }
+    return this.get<T>(`/api/sleep/feed?${params.toString()}`);
+  }
+
+  /**
+   * Get sleep data by date
+   * @param apiKey - API key for authorization
+   * @param athleteName - Name of the athlete
+   * @param date - Date in format "YYYY-MM-DD" with leading zeroes
+   */
+  async getSleepByDate<T = unknown>(
+    apiKey: string,
+    athleteName: string,
+    date: string
+  ): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      apiKey: apiKey,
+      athleteName: athleteName,
+      date: date,
+    });
+    return this.get<T>(`/api/sleep/byDate?${params.toString()}`);
+  }
+
+  // ==================== Training Summary Methods ====================
+
+  /**
+   * Get training summary for a date range
+   * @param apiKey - API key for authorization
+   * @param athleteName - Name of the athlete
+   * @param startDate - Start date in format "MM/dd/yyyy" or "M/d/yyyy"
+   * @param endDate - End date in format "MM/dd/yyyy" or "M/d/yyyy"
+   */
+  async getTrainingSummary<T = unknown>(
+    apiKey: string,
+    athleteName: string,
+    startDate: string,
+    endDate: string
+  ): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      apiKey: apiKey,
+      athleteName: athleteName,
+      startDate: startDate,
+      endDate: endDate,
+    });
+    return this.get<T>(`/api/trainingSummary?${params.toString()}`);
+  }
+
+  // ==================== Profile Edit Methods ====================
+
+  /**
+   * Change user password
+   * @param apiKey - API key for authorization
+   * @param newPassword - New password (will be hashed with SHA-256)
+   */
+  async changePassword<T = unknown>(
+    apiKey: string,
+    newPassword: string
+  ): Promise<ApiResponse<T>> {
+    const hashedPassword = await this.hashPassword(newPassword);
+    const params = new URLSearchParams({
+      apiKey: apiKey,
+    });
+    return this.post<T>(
+      `/api/editProfile/changePassword?${params.toString()}`,
+      {
+        NewPassword: hashedPassword,
+      },
+      {
+        requiresAuth: false,
+      }
+    );
+  }
+
+  /**
+   * Change user profile picture
+   * @param apiKey - API key for authorization
+   * @param picString - Base64 string of the picture (empty string for revert)
+   * @param isRevert - Whether to revert to default profile picture
+   */
+  async changeProfilePicture<T = unknown>(
+    apiKey: string,
+    picString: string,
+    isRevert: boolean
+  ): Promise<ApiResponse<T>> {
+    const params = new URLSearchParams({
+      apiKey: apiKey,
+      isRevert: isRevert.toString(),
+    });
+    return this.post<T>(
+      `/api/editProfile/changePic?${params.toString()}`,
+      {
+        PicString: picString,
+      },
+      {
+        requiresAuth: false,
+      }
+    );
+  }
 }
 
 // Export singleton instance
