@@ -1,5 +1,5 @@
 // Service Worker for GooseNet PWA
-const CACHE_NAME = 'goosenet-v1';
+const CACHE_NAME = 'goosenet-v2';
 const urlsToCache = [
   '/',
   '/dashboard',

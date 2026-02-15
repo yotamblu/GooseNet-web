@@ -13,6 +13,7 @@ import { useAuth } from "../../context/AuthContext";
 import Footer from "../components/Footer";
 import ThemeToggle from "../components/ThemeToggle";
 import { getProfilePicSrc } from "../../lib/profile-pic-utils";
+import { API_BASE_URL } from "../../lib/api-config";
 
 function LoginPageContent() {
   const router = useRouter();
@@ -262,7 +263,7 @@ function LoginPageContent() {
               <button
                 type="button"
                 onClick={() => {
-                  window.location.href = "https://api.goosenet.space/auth/google?role=athlete";
+                  window.location.href = `${API_BASE_URL}/auth/google?role=athlete`;
                 }}
                 disabled={isLoading}
                 className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

@@ -13,6 +13,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { useRequireAuth } from "../../../hooks/useRequireAuth";
 import { apiFetch } from "../../../lib/api";
 import { getToken } from "../../../lib/auth";
+import { API_BASE_URL } from "../../../lib/api-config";
 import ThemeToggle from "../../components/ThemeToggle";
 import Footer from "../../components/Footer";
 import { getProfilePicSrc } from "../../../lib/profile-pic-utils";
@@ -99,7 +100,6 @@ function ConnectCoachConfirmPageContent() {
 
       // Call API to connect with coach
       const token = getToken();
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.goosenet.space";
       const response = await fetch(
         `${API_BASE_URL}/api/coachConnection/connect`,
         {

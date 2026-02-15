@@ -4,8 +4,7 @@
  */
 
 import { getToken, clearToken } from "./auth";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.goosenet.space";
+import { API_BASE_URL } from "./api-config";
 
 /**
  * Fetch wrapper with automatic authentication

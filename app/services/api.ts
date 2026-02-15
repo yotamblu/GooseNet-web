@@ -3,6 +3,8 @@
  * Centralized service for making HTTP requests to the GooseNet API
  */
 
+import { API_BASE_URL } from "../../lib/api-config";
+
 type RequestMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 interface RequestOptions {
@@ -23,8 +25,7 @@ class ApiService {
   private defaultHeaders: Record<string, string>;
 
   constructor() {
-    // Use environment variable or default to GooseAPI
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://api.goosenet.space";
+    this.baseUrl = API_BASE_URL;
     this.defaultHeaders = {
       "Content-Type": "application/json",
     };
@@ -249,9 +250,8 @@ class ApiService {
     const hashedPassword = await this.hashPassword(password);
     
     try {
-      // Use full URL for GooseAPI login endpoint
       const response = await this.request<unknown>(
-        "https://api.goosenet.space/api/userAuth",
+        `${this.baseUrl}/api/userAuth`,
         {
           method: "POST",
           body: {
