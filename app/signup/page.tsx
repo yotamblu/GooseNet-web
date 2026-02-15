@@ -116,7 +116,7 @@ export default function SignUpPage() {
       console.log("🔐 Registration - Password hashed with SHA-256:", hashedPassword.substring(0, 20) + "...");
 
       // Call registration endpoint
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://gooseapi.ddns.net";
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.goosenet.space";
       const registrationBody = {
         UserName: username,
         FullName: fullName,
@@ -589,7 +589,7 @@ export default function SignUpPage() {
                 type="button"
                 onClick={() => {
                   const role = selectedRole || "athlete"; // Default to athlete if somehow no role is selected
-                  window.location.href = `https://gooseapi.ddns.net/auth/google?role=${role}`;
+                  window.location.href = `https://api.goosenet.space/auth/google?role=${role}`;
                 }}
                 disabled={isLoading}
                 className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"

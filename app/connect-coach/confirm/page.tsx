@@ -99,7 +99,7 @@ function ConnectCoachConfirmPageContent() {
 
       // Call API to connect with coach
       const token = getToken();
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://gooseapi.ddns.net";
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.goosenet.space";
       const response = await fetch(
         `${API_BASE_URL}/api/coachConnection/connect`,
         {

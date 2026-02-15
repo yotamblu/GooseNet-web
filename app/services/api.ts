@@ -24,7 +24,7 @@ class ApiService {
 
   constructor() {
     // Use environment variable or default to GooseAPI
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://gooseapi.ddns.net";
+    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://api.goosenet.space";
     this.defaultHeaders = {
       "Content-Type": "application/json",
     };
@@ -251,7 +251,7 @@ class ApiService {
     try {
       // Use full URL for GooseAPI login endpoint
       const response = await this.request<unknown>(
-        "https://gooseapi.ddns.net/api/userAuth",
+        "https://api.goosenet.space/api/userAuth",
         {
           method: "POST",
           body: {

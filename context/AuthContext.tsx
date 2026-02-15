@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log("🔐 Login - Full hash length:", hashedPassword.length, "(should be 64 for SHA-256)");
 
     // Call login endpoint (without auth header since we're logging in)
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://gooseapi.ddns.net";
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.goosenet.space";
     const loginBody = {
       userName,
       hashedPassword, // Send SHA-256 hashed password
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Login with Google OAuth
    */
   const loginWithGoogle = async (credential: string, role?: string): Promise<void> => {
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://gooseapi.ddns.net";
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.goosenet.space";
     
     // Call Google OAuth endpoint
     const response = await fetch(`${API_BASE_URL}/api/userAuth/google`, {

@@ -1026,4 +1026,3 @@ export default function RunningWorkoutFormPage() {
     </Suspense>
   );
 }
-
