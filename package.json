@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.6.1",
     "crypto-js": "^4.2.0",
     "framer-motion": "^12.25.0",
     "leaflet": "^1.9.4",
