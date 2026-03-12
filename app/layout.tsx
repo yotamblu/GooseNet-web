@@ -4,6 +4,8 @@ import "./globals.css";
 import { Providers } from "./providers";
 import PWARegister from "./components/PWARegister";
 import { Analytics } from "@vercel/analytics/react";
+import { getMetadataBase } from "../lib/site-config";
+import JsonLdOrganizationWebSite from "./components/JsonLdOrganizationWebSite";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,6 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: getMetadataBase(),
   title: "GooseNet - Train Smarter. Run Stronger. Together.",
   description:
     "GooseNet connects runners and coaches through structured workouts, real performance data, and seamless Garmin integration. Built for real running training.",
@@ -36,11 +39,15 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "GooseNet",
   },
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "GooseNet - Train Smarter. Run Stronger. Together.",
     description:
       "GooseNet connects runners and coaches through structured workouts, real performance data, and seamless Garmin integration.",
     type: "website",
+    url: "/",
   },
   twitter: {
     card: "summary_large_image",
@@ -70,6 +77,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 h-full`}
       >
+        <JsonLdOrganizationWebSite />
         <Providers>
           {children}
           <PWARegister />
