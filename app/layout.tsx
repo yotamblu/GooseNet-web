@@ -6,6 +6,7 @@ import PWARegister from "./components/PWARegister";
 import { Analytics } from "@vercel/analytics/react";
 import { getMetadataBase } from "../lib/site-config";
 import JsonLdOrganizationWebSite from "./components/JsonLdOrganizationWebSite";
+import { THEME_STORAGE_KEY } from "../lib/theme-storage";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -63,8 +64,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="h-full">
+    <html lang="en" suppressHydrationWarning className="h-full dark">
       <head>
+        {/* Runs before paint: default dark when theme key is missing (must match ThemeProvider storageKey) */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var k='${THEME_STORAGE_KEY}',v=localStorage.getItem(k),d=document.documentElement;d.classList.remove('light','dark');if(v==='light'){d.classList.add('light');d.style.colorScheme='light';}else{d.classList.add('dark');d.style.colorScheme='dark';}}catch(e){var d=document.documentElement;d.classList.remove('light','dark');d.classList.add('dark');d.style.colorScheme='dark';}})();`,
+          }}
+        />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#2563eb" />
         <meta name="mobile-web-app-capable" content="yes" />

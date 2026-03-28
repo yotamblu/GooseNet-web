@@ -56,8 +56,8 @@ function GarminCallbackPageContent() {
         const urlApiKey = searchParams.get("apiKey");
         const urlTimestamp = searchParams.get("timestamp");
 
-        // Apply theme if provided and not default
-        if (urlTheme && urlTheme !== "light" && theme !== urlTheme) {
+        // Apply theme if provided and not default (default is dark)
+        if (urlTheme && urlTheme !== "dark" && theme !== urlTheme) {
           setTheme(urlTheme);
         }
 

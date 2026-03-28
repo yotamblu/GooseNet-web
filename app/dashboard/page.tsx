@@ -97,7 +97,7 @@ export default function DashboardPage() {
       localStorage.setItem("garmin_token_timestamp", tokenTimestamp);
 
       // Build callback URL with stateToken, theme, and OAuth params (for mobile localStorage issues)
-      const currentTheme = theme || "light";
+      const currentTheme = theme || "dark";
       const callbackUrl = `${window.location.origin}/garmin/callback?stateToken=${encodeURIComponent(tokenResponse.data.stateToken)}&theme=${encodeURIComponent(currentTheme)}&token_secret=${encodeURIComponent(tokenResponse.data.oauth_token_secret)}&apiKey=${encodeURIComponent(user.apiKey)}&timestamp=${encodeURIComponent(tokenTimestamp)}`;
       const encodedCallback = encodeURIComponent(callbackUrl);
 
