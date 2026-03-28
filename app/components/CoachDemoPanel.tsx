@@ -9,12 +9,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 
-type CoachDemoPanelProps = {
-  /** Hide bottom “Join as Coach” bar (e.g. when embedded in hero) */
-  showFooterCta?: boolean;
-};
-
-export default function CoachDemoPanel({ showFooterCta = true }: CoachDemoPanelProps) {
+export default function CoachDemoPanel() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -340,9 +335,7 @@ export default function CoachDemoPanel({ showFooterCta = true }: CoachDemoPanelP
       </div>
 
       {/* Step Indicators */}
-      <div
-        className={`absolute left-1/2 -translate-x-1/2 flex items-center gap-2 ${showFooterCta ? "bottom-16" : "bottom-6"}`}
-      >
+      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-2">
         {steps.map((_, index) => (
           <button
             key={index}
@@ -358,17 +351,16 @@ export default function CoachDemoPanel({ showFooterCta = true }: CoachDemoPanelP
         ))}
       </div>
 
-      {showFooterCta && (
-        <div className="absolute bottom-4 left-6 right-6 flex items-center justify-between px-4 py-2.5 bg-gray-100/90 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg border border-gray-300 dark:border-gray-700">
-          <span className="text-xs text-gray-700 dark:text-gray-300">Want this for your team?</span>
-          <a
-            href="#cta"
-            className="px-3 py-1 text-xs font-semibold text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
-          >
-            Join as Coach
-          </a>
-        </div>
-      )}
+      {/* CTA Row */}
+      <div className="absolute bottom-4 left-6 right-6 flex items-center justify-between px-4 py-2.5 bg-gray-100/90 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg border border-gray-300 dark:border-gray-700">
+        <span className="text-xs text-gray-700 dark:text-gray-300">Want this for your team?</span>
+        <a
+          href="#cta"
+          className="px-3 py-1 text-xs font-semibold text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+        >
+          Join as Coach
+        </a>
+      </div>
     </div>
   );
 }
