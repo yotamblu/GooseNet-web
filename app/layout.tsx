@@ -49,12 +49,14 @@ export const metadata: Metadata = {
       "GooseNet connects runners and coaches through structured workouts, real performance data, and seamless Garmin integration.",
     type: "website",
     url: "/",
+    images: [{ url: "/preview.png", alt: "GooseNet" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "GooseNet - Train Smarter. Run Stronger. Together.",
     description:
       "GooseNet connects runners and coaches through structured workouts, real performance data, and Garmin integration.",
+    images: ["/preview.png"],
   },
 };
 
