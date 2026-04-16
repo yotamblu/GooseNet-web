@@ -368,7 +368,7 @@ export function GoosenetAd30() {
             <BrowserChrome scale={scale} />
             <div style={{ position: "relative", background: C.bg }}>
               <Img
-                src={staticFile("preview.png")}
+                src={staticFile("preview-artwork.png")}
                 style={{
                   width: "100%",
                   display: "block",

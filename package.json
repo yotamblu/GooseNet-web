@@ -9,7 +9,8 @@
     "lint": "eslint",
     "remotion:studio": "remotion studio remotion/index.ts",
     "remotion:render:ad": "remotion render remotion/index.ts GoosenetAd30 out/goosenet-ad-30s-16x9.mp4",
-    "remotion:render:ad:vertical": "remotion render remotion/index.ts GoosenetAd30Vertical out/goosenet-ad-30s-9x16.mp4"
+    "remotion:render:ad:vertical": "remotion render remotion/index.ts GoosenetAd30Vertical out/goosenet-ad-30s-9x16.mp4",
+    "generate:social-preview": "node scripts/generate-social-preview.cjs"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.448",
@@ -32,6 +33,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
