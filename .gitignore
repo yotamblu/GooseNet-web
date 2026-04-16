@@ -13,7 +13,7 @@
 # testing
 /coverage
 
-# next.js
+# next.js static export & Remotion video renders (e.g. npm run remotion:render:ad)
 /.next/
 /out/
 
