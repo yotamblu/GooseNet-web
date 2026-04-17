@@ -44,13 +44,13 @@ export default function Header() {
   const closeMobile = () => setMobileMenuOpen(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-200/60 dark:border-white/10 bg-white/70 dark:bg-gray-950/60 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-950/50">
+    <header className="sticky top-0 z-50 w-full max-w-full border-b border-gray-200/60 dark:border-white/10 bg-white/70 dark:bg-gray-950/60 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-950/50">
       <nav
-        className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3.5 lg:px-8"
+        className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-4 px-4 sm:px-6 lg:px-8 py-3 sm:py-3.5"
         aria-label="Global"
       >
         {/* Logo */}
-        <Link href="/" className="group flex items-center gap-2.5 shrink-0">
+        <Link href="/" className="group flex items-center gap-2 sm:gap-2.5 shrink-0 min-w-0">
           <motion.span
             whileHover={reduce ? undefined : { rotate: -10, scale: 1.08 }}
             transition={{ type: "spring", stiffness: 380, damping: 20 }}
@@ -65,11 +65,11 @@ export default function Header() {
               alt="GooseNet"
               width={36}
               height={36}
-              className="relative h-9 w-9 object-contain"
+              className="relative h-8 w-8 sm:h-9 sm:w-9 object-contain"
               priority
             />
           </motion.span>
-          <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50">
+          <span className="text-base sm:text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50">
             GooseNet
           </span>
         </Link>

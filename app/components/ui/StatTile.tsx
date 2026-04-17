@@ -171,7 +171,7 @@ export default function StatTile({
       animate={reduce ? undefined : inView ? { opacity: 1, y: 0 } : undefined}
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
-        "group relative overflow-hidden rounded-2xl",
+        "group relative overflow-hidden rounded-2xl w-full max-w-full min-w-0",
         "bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl",
         "border border-gray-200/80 dark:border-white/10",
         "shadow-sm",
@@ -184,7 +184,7 @@ export default function StatTile({
       {...(rest as Record<string, unknown>)}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="text-xs font-medium uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+        <div className="text-xs font-medium uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400 break-words min-w-0">
           {label}
         </div>
         {icon && (
@@ -194,11 +194,11 @@ export default function StatTile({
         )}
       </div>
 
-      <div className="mt-2 flex items-baseline gap-1.5">
+      <div className="mt-2 flex items-baseline gap-1.5 min-w-0">
         <span
           className={cn(
-            "display-heading font-bold tabular-nums text-gray-900 dark:text-white",
-            compact ? "text-2xl" : "text-3xl sm:text-4xl"
+            "display-heading font-bold tabular-nums text-gray-900 dark:text-white min-w-0 truncate",
+            compact ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl lg:text-4xl"
           )}
         >
           {display}

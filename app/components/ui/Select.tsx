@@ -47,7 +47,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
   const invalid = Boolean(error);
 
   return (
-    <div className="w-full">
+    <div className="w-full max-w-full min-w-0">
       {label && (
         <label
           htmlFor={inputId}
@@ -57,7 +57,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
           {required && <span className="ml-0.5 text-rose-500" aria-hidden>*</span>}
         </label>
       )}
-      <div className="relative">
+      <div className="relative w-full max-w-full min-w-0">
         <select
           ref={ref}
           id={inputId}
@@ -65,7 +65,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
           aria-describedby={describedById}
           required={required}
           className={cn(
-            "w-full appearance-none rounded-xl pl-3 pr-9 transition-colors",
+            "w-full max-w-full min-w-0 appearance-none rounded-xl pl-3 pr-9 transition-colors",
             "bg-white dark:bg-gray-900/60",
             "text-gray-900 dark:text-gray-100",
             "border outline-none",

@@ -120,8 +120,8 @@ export default function WorkoutChart({
     return (
       <div
         className={cn(
-          "rounded-2xl border border-gray-200 dark:border-white/10",
-          "bg-white dark:bg-gray-900/60 p-6",
+          "w-full max-w-full min-w-0 rounded-2xl border border-gray-200 dark:border-white/10",
+          "bg-white dark:bg-gray-900/60 p-4 sm:p-6",
           className
         )}
       >
@@ -204,8 +204,8 @@ export default function WorkoutChart({
     <div
       ref={containerRef}
       className={cn(
-        "relative rounded-2xl border border-gray-200 dark:border-white/10",
-        "bg-white dark:bg-gray-900/60 p-6 shadow-sm",
+        "relative w-full max-w-full min-w-0 rounded-2xl border border-gray-200 dark:border-white/10",
+        "bg-white dark:bg-gray-900/60 p-4 sm:p-6 shadow-sm",
         className
       )}
     >
@@ -225,13 +225,13 @@ export default function WorkoutChart({
         </span>
       </div>
 
-      <div className="overflow-hidden">
+      <div className="w-full max-w-full overflow-hidden">
         <svg
           ref={svgRef}
           viewBox={`0 0 ${width} ${height}`}
-          className="w-full cursor-crosshair touch-none"
+          className="w-full h-auto max-w-full cursor-crosshair touch-none"
           preserveAspectRatio="none"
-          style={{ minHeight: `${height}px`, touchAction: "none" }}
+          style={{ aspectRatio: `${width} / ${height}`, touchAction: "none" }}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           onTouchMove={handleTouchMove}

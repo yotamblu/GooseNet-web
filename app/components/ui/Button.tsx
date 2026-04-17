@@ -29,7 +29,7 @@ export interface ButtonProps extends MotionButtonProps {
 
 const BASE =
   "relative inline-flex items-center justify-center gap-2 rounded-xl font-semibold " +
-  "transition-colors duration-200 select-none " +
+  "transition-colors duration-200 select-none max-w-full " +
   "disabled:opacity-50 disabled:pointer-events-none " +
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 " +
   "focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400 " +
@@ -118,7 +118,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
           {iconLeft}
         </span>
       )}
-      {children && <span className="inline-flex items-center">{children}</span>}
+      {children && (
+        <span className="inline-flex items-center min-w-0 truncate">{children}</span>
+      )}
       {!loading && iconRight && (
         <span className="shrink-0 -mr-0.5" aria-hidden>
           {iconRight}

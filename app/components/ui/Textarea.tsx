@@ -19,7 +19,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textare
   const invalid = Boolean(error);
 
   return (
-    <div className="w-full">
+    <div className="w-full max-w-full min-w-0">
       {label && (
         <label
           htmlFor={inputId}
@@ -37,7 +37,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textare
         aria-describedby={describedById}
         required={required}
         className={cn(
-          "w-full rounded-xl px-3 py-2.5 text-sm transition-colors resize-y",
+          "w-full max-w-full min-w-0 rounded-xl px-3 py-2.5 text-sm transition-colors resize-y",
           "bg-white dark:bg-gray-900/60",
           "text-gray-900 dark:text-gray-100",
           "placeholder:text-gray-400 dark:placeholder:text-gray-500",

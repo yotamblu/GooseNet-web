@@ -254,22 +254,26 @@ export default function CreateFlockPage() {
                   helperText="Visible only in your preview — can be added to the flock later."
                 />
 
-                <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+                <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+                  <Link href="/flocks" className="block w-full sm:w-auto">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full sm:w-auto"
+                    >
+                      Cancel
+                    </Button>
+                  </Link>
                   <Button
                     type="submit"
                     variant="gradient"
-                    fullWidth
+                    className="w-full sm:w-auto"
                     loading={isSubmitting}
                     disabled={isSubmitting || !flockName.trim()}
                     iconLeft={!isSubmitting ? IconPlus : undefined}
                   >
                     {isSubmitting ? "Creating…" : "Create Flock"}
                   </Button>
-                  <Link href="/flocks" className="sm:w-auto">
-                    <Button type="button" variant="secondary" fullWidth>
-                      Cancel
-                    </Button>
-                  </Link>
                 </div>
               </form>
             )}

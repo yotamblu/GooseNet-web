@@ -264,19 +264,22 @@ export default function SettingsPage() {
 
   return (
     <AppShell title="Settings" subtitle="Manage your account" maxWidth="md" gradientTitle>
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <Tabs<SettingsTab>
-            items={tabItems}
-            value={activeTab}
-            onChange={(v) => setActiveTab(v)}
-            variant="pills"
-            ariaLabel="Settings sections"
-          />
+      <div className="flex flex-col gap-6 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 min-w-0">
+          <div className="-mx-1 px-1 overflow-x-auto scrollbar-thin">
+            <Tabs<SettingsTab>
+              items={tabItems}
+              value={activeTab}
+              onChange={(v) => setActiveTab(v)}
+              variant="pills"
+              ariaLabel="Settings sections"
+            />
+          </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => router.push("/dashboard")}
+            className="w-full sm:w-auto justify-center"
             iconLeft={
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -309,7 +312,7 @@ export default function SettingsPage() {
                   </CardHeader>
 
                   <div className="space-y-5">
-                    <div className="flex flex-wrap items-start gap-8">
+                    <div className="flex flex-wrap items-start justify-center sm:justify-start gap-6 sm:gap-8">
                       <div className="text-center">
                         <p className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
                           Current
@@ -370,7 +373,7 @@ export default function SettingsPage() {
                         )}
                       </AnimatePresence>
 
-                      <div className="flex-1 min-w-[12rem] space-y-3">
+                      <div className="flex-1 basis-full sm:basis-auto min-w-[12rem] space-y-3 text-center sm:text-left">
                         <div>
                           <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                             {user?.userName ?? "Your profile"}
@@ -503,6 +506,7 @@ export default function SettingsPage() {
                           variant="secondary"
                           onClick={handleCancelImageUpload}
                           disabled={isUploadingImage}
+                          className="w-full sm:w-auto"
                         >
                           Cancel
                         </Button>
@@ -512,6 +516,7 @@ export default function SettingsPage() {
                         onClick={handleImageUpload}
                         disabled={!selectedImage || isUploadingImage}
                         loading={isUploadingImage}
+                        className="w-full sm:w-auto"
                       >
                         <AnimatePresence mode="wait" initial={false}>
                           {imageSuccess ? (
@@ -629,10 +634,11 @@ export default function SettingsPage() {
                       )}
                     </AnimatePresence>
 
-                    <div className="flex justify-end">
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                       <Button
                         type="submit"
                         variant="gradient"
+                        className="w-full sm:w-auto"
                         disabled={isChangingPassword}
                         loading={isChangingPassword}
                       >
@@ -684,8 +690,8 @@ export default function SettingsPage() {
                       </CardDescription>
                     </div>
                   </CardHeader>
-                  <div className="flex justify-end">
-                    <Button variant="danger" onClick={handleLogout}>
+                  <div className="flex flex-col sm:flex-row sm:justify-end">
+                    <Button variant="danger" onClick={handleLogout} className="w-full sm:w-auto">
                       Log out
                     </Button>
                   </div>

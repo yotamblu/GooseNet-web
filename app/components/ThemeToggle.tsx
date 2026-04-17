@@ -42,7 +42,7 @@ export default function ThemeToggle() {
   }, [theme, mounted]);
 
   const btnBase =
-    "relative inline-flex h-9 w-9 items-center justify-center rounded-xl " +
+    "relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl " +
     "border border-gray-200 dark:border-white/10 " +
     "bg-white/80 dark:bg-gray-900/60 backdrop-blur-md " +
     "text-gray-700 dark:text-gray-200 " +

@@ -40,7 +40,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const invalid = Boolean(error);
 
   return (
-    <div className="w-full">
+    <div className="w-full max-w-full min-w-0">
       {label && (
         <label
           htmlFor={inputId}
@@ -53,7 +53,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
 
       <div
         className={cn(
-          "group relative flex items-center w-full rounded-xl transition-colors",
+          "group relative flex items-center w-full max-w-full min-w-0 rounded-xl transition-colors",
           "bg-white dark:bg-gray-900/60",
           "border",
           invalid
@@ -74,7 +74,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           aria-describedby={describedById}
           required={required}
           className={cn(
-            "w-full bg-transparent outline-none",
+            "w-full min-w-0 bg-transparent outline-none",
             "text-gray-900 dark:text-gray-100",
             "placeholder:text-gray-400 dark:placeholder:text-gray-500",
             "px-3",

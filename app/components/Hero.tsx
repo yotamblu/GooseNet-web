@@ -81,7 +81,7 @@ export default function Hero() {
   const reduce = useReducedMotion();
 
   return (
-    <section className="bg-aurora relative isolate overflow-hidden py-24 sm:py-32 lg:py-40">
+    <section className="bg-aurora relative isolate overflow-hidden py-16 sm:py-24 md:py-32 lg:py-40 w-full max-w-full">
       {/* Floating brand orbs (decorative) */}
       {!reduce && (
         <>
@@ -117,7 +117,7 @@ export default function Hero() {
         }}
       />
 
-      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+      <div className="relative mx-auto max-w-7xl w-full min-w-0 px-4 sm:px-6 lg:px-8">
         <motion.div
           variants={stagger}
           initial="hidden"
@@ -138,7 +138,7 @@ export default function Hero() {
           {/* Headline with word stagger */}
           <motion.h1
             variants={staggerTight}
-            className="display-heading mt-6 text-5xl text-gray-900 sm:text-6xl lg:text-7xl dark:text-gray-50"
+            className="display-heading mt-6 text-3xl text-gray-900 sm:text-5xl lg:text-6xl xl:text-7xl break-words dark:text-gray-50"
           >
             <span className="inline-block align-baseline">
               {WORDS.map((w, i) => (
@@ -168,7 +168,7 @@ export default function Hero() {
           {/* Subhead */}
           <motion.p
             variants={fadeUp}
-            className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-gray-700 sm:text-xl dark:text-gray-300"
+            className="mx-auto mt-6 max-w-2xl text-base leading-7 text-gray-700 sm:text-lg sm:leading-8 md:text-xl dark:text-gray-300"
           >
             GooseNet connects runners and coaches through structured workouts,
             real performance data, and seamless Garmin integration.
@@ -196,7 +196,7 @@ export default function Hero() {
           {/* CTAs */}
           <motion.div
             variants={fadeUp}
-            className="mt-12 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4"
+            className="mt-10 flex w-full max-w-md mx-auto flex-col items-stretch justify-center gap-3 sm:mt-12 sm:max-w-none sm:flex-row sm:items-center sm:gap-4"
           >
             <motion.div
               initial={reduce ? false : { opacity: 0, scale: 0.92 }}
@@ -204,10 +204,11 @@ export default function Hero() {
               transition={{ ...springSoft, delay: 0.35 }}
               whileHover={reduce ? undefined : { scale: 1.03 }}
               whileTap={reduce ? undefined : { scale: 0.97 }}
+              className="w-full sm:w-auto"
             >
               <Link
                 href="/signup"
-                className="shadow-glow-brand animate-gradient relative inline-flex items-center justify-center rounded-xl bg-[linear-gradient(120deg,#3b82f6_0%,#6366f1_35%,#a855f7_70%,#3b82f6_100%)] bg-[length:200%_100%] px-8 py-4 text-base font-semibold text-white transition-[filter] hover:brightness-110 sm:text-lg"
+                className="shadow-glow-brand animate-gradient relative inline-flex w-full sm:w-auto items-center justify-center rounded-xl bg-[linear-gradient(120deg,#3b82f6_0%,#6366f1_35%,#a855f7_70%,#3b82f6_100%)] bg-[length:200%_100%] px-6 sm:px-8 py-3.5 sm:py-4 text-base font-semibold text-white transition-[filter] hover:brightness-110 sm:text-lg"
               >
                 Join GooseNet
                 <svg
@@ -232,10 +233,11 @@ export default function Hero() {
               transition={{ ...springSoft, delay: 0.45 }}
               whileHover={reduce ? undefined : { scale: 1.03 }}
               whileTap={reduce ? undefined : { scale: 0.97 }}
+              className="w-full sm:w-auto"
             >
               <Link
                 href="#how-it-works"
-                className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white/80 px-8 py-4 text-base font-semibold text-gray-800 backdrop-blur-md transition-colors hover:border-gray-400 hover:bg-white sm:text-lg dark:border-white/15 dark:bg-white/5 dark:text-gray-100 dark:hover:border-white/25 dark:hover:bg-white/10"
+                className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl border border-gray-300 bg-white/80 px-6 sm:px-8 py-3.5 sm:py-4 text-base font-semibold text-gray-800 backdrop-blur-md transition-colors hover:border-gray-400 hover:bg-white sm:text-lg dark:border-white/15 dark:bg-white/5 dark:text-gray-100 dark:hover:border-white/25 dark:hover:bg-white/10"
               >
                 See how it works
               </Link>

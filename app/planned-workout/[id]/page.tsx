@@ -20,9 +20,6 @@ import {
   StatTile,
   SectionHeading,
   Skeleton,
-  fadeUp,
-  stagger,
-  inViewOnce,
 } from "../../components/ui";
 
 interface WorkoutInterval {
@@ -180,26 +177,41 @@ function describeStep(step: WorkoutInterval): { durationLabel: string; paceLabel
   return { durationLabel, paceLabel: null };
 }
 
+/** Cap expanded repeat blocks so pathological plans cannot freeze the main thread. */
+const MAX_STRUCTURE_ROWS = 800;
+
 function flattenIntervals(
   intervals: WorkoutInterval[],
   parentKey = "",
-  depth = 0
-): FlatIntervalRow[] {
-  const rows: FlatIntervalRow[] = [];
+  depth = 0,
+  rows: FlatIntervalRow[] = [],
+  truncatedRef: { current: boolean } = { current: false }
+): { rows: FlatIntervalRow[]; truncated: boolean } {
+  const push = (row: FlatIntervalRow) => {
+    if (rows.length >= MAX_STRUCTURE_ROWS) {
+      truncatedRef.current = true;
+      return;
+    }
+    rows.push(row);
+  };
 
   intervals.forEach((interval, idx) => {
+    if (rows.length >= MAX_STRUCTURE_ROWS) return;
+
     const key = `${parentKey}${idx}`;
     if (interval.steps && interval.steps.length > 0) {
       const repeatCount = interval.repeatValue || 1;
       for (let r = 0; r < repeatCount; r++) {
+        if (rows.length >= MAX_STRUCTURE_ROWS) return;
         interval.steps.forEach((step, si) => {
+          if (rows.length >= MAX_STRUCTURE_ROWS) return;
           const skey = `${key}-r${r}-s${si}`;
           if (step.steps && step.steps.length > 0) {
-            rows.push(...flattenIntervals([step], `${skey}-`, depth + 1));
+            flattenIntervals([step], `${skey}-`, depth + 1, rows, truncatedRef);
           } else {
             const zone = classifyIntensity(step);
             const { durationLabel, paceLabel } = describeStep(step);
-            rows.push({
+            push({
               key: skey,
               label: ZONE_STYLE[zone].label,
               description:
@@ -219,7 +231,7 @@ function flattenIntervals(
     } else {
       const zone = classifyIntensity(interval);
       const { durationLabel, paceLabel } = describeStep(interval);
-      rows.push({
+      push({
         key,
         label: ZONE_STYLE[zone].label,
         description:
@@ -234,13 +246,16 @@ function flattenIntervals(
     }
   });
 
-  return rows;
+  return { rows, truncated: truncatedRef.current };
 }
+
+const MAX_LAPS_FOR_CHART = 500;
 
 function convertIntervalsToLaps(intervals: WorkoutInterval[]): Lap[] {
   const laps: Lap[] = [];
 
   const processStep = (step: WorkoutInterval) => {
+    if (laps.length >= MAX_LAPS_FOR_CHART) return;
     const isRest = step.intensity === "REST" || step.intensity === "rest";
     let lapDistance = 0;
     let lapDuration = 0;
@@ -284,10 +299,13 @@ function convertIntervalsToLaps(intervals: WorkoutInterval[]): Lap[] {
   };
 
   const processInterval = (interval: WorkoutInterval) => {
+    if (laps.length >= MAX_LAPS_FOR_CHART) return;
     if (interval.steps && interval.steps.length > 0) {
       const repeatCount = interval.repeatValue || 1;
       for (let i = 0; i < repeatCount; i++) {
+        if (laps.length >= MAX_LAPS_FOR_CHART) return;
         interval.steps.forEach((step) => {
+          if (laps.length >= MAX_LAPS_FOR_CHART) return;
           if (step.steps && step.steps.length > 0) {
             processInterval(step);
           } else {
@@ -350,17 +368,23 @@ export default function PlannedWorkoutDetailPage() {
       : "/planned-workouts"
     : "/";
 
-  const { flatRows, laps, totals } = useMemo(() => {
+  const { flatRows, structureTruncated, laps, totals } = useMemo(() => {
     if (!workoutData) {
-      return { flatRows: [] as FlatIntervalRow[], laps: [] as Lap[], totals: { distance: 0, duration: 0, intervals: 0 } };
+      return {
+        flatRows: [] as FlatIntervalRow[],
+        structureTruncated: false,
+        laps: [] as Lap[],
+        totals: { distance: 0, duration: 0, intervals: 0 },
+      };
     }
     const intervals = workoutData.worokutObject.intervals || [];
-    const rows = flattenIntervals(intervals);
+    const { rows, truncated: structureTruncated } = flattenIntervals(intervals);
     const ls = convertIntervalsToLaps(intervals);
     const totalDistance = ls.reduce((acc, l) => acc + l.lapDistanceInKilometers, 0);
     const totalDuration = ls.reduce((acc, l) => acc + l.lapDurationInSeconds, 0);
     return {
       flatRows: rows,
+      structureTruncated,
       laps: ls,
       totals: {
         distance: totalDistance,
@@ -377,7 +401,7 @@ export default function PlannedWorkoutDetailPage() {
           <Card padding="lg" className="space-y-4">
             <Skeleton h={28} w="60%" />
             <Skeleton h={16} w="30%" />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            <div className="grid grid-cols-3 gap-3 pt-2 sm:gap-4">
               <Skeleton h={96} />
               <Skeleton h={96} />
               <Skeleton h={96} />
@@ -453,7 +477,7 @@ export default function PlannedWorkoutDetailPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
           <StatTile
             label="Total Distance"
             value={Number(totals.distance.toFixed(2))}
@@ -482,25 +506,32 @@ export default function PlannedWorkoutDetailPage() {
             title="Workout Structure"
             description="Color-coded intensity zones — swipe through each step of your session."
           />
+          {structureTruncated && (
+            <p className="mb-3 text-sm text-amber-700 dark:text-amber-300/90">
+              Showing the first {MAX_STRUCTURE_ROWS} steps of this plan. The full structure is available in the workout
+              plan JSON below.
+            </p>
+          )}
           <div className="relative pl-6">
             <span
               aria-hidden
               className="absolute left-2 top-3 bottom-3 w-px bg-gradient-to-b from-blue-500/40 via-purple-500/40 to-teal-400/40"
             />
-            <motion.ol
-              variants={reduce ? undefined : stagger}
-              initial={reduce ? undefined : "hidden"}
-              whileInView={reduce ? undefined : "show"}
-              viewport={inViewOnce}
-              className="space-y-3"
-            >
+            <ol className="space-y-3">
               {flatRows.map((row, i) => {
                 const style = ZONE_STYLE[row.zone];
                 return (
                   <motion.li
                     key={row.key}
-                    variants={reduce ? undefined : fadeUp}
+                    layout={!reduce}
                     className="relative"
+                    initial={reduce ? false : { opacity: 0, y: 14 }}
+                    animate={reduce ? undefined : { opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.28,
+                      ease: [0.22, 1, 0.36, 1],
+                      delay: reduce ? 0 : Math.min(i * 0.018, 0.36),
+                    }}
                   >
                     <span
                       aria-hidden
@@ -509,9 +540,9 @@ export default function PlannedWorkoutDetailPage() {
                     <div
                       className={`rounded-2xl border border-gray-200 dark:border-white/10 p-4 sm:p-5 ${style.bg} ring-1 ring-inset ${style.ring}`}
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
                             <span
                               className={`text-xs font-semibold uppercase tracking-wider ${style.text}`}
                             >
@@ -526,11 +557,11 @@ export default function PlannedWorkoutDetailPage() {
                               </Badge>
                             )}
                           </div>
-                          <div className="text-base font-semibold text-gray-900 dark:text-gray-50 truncate">
+                          <div className="text-base font-semibold text-gray-900 dark:text-gray-50 break-words">
                             {row.description}
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 text-sm">
+                        <div className="flex flex-wrap items-center gap-3 text-sm sm:gap-4">
                           <span className="font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
                             {row.durationLabel}
                           </span>
@@ -545,7 +576,7 @@ export default function PlannedWorkoutDetailPage() {
                   </motion.li>
                 );
               })}
-            </motion.ol>
+            </ol>
           </div>
         </section>
       )}
@@ -554,8 +585,10 @@ export default function PlannedWorkoutDetailPage() {
       {laps.length > 0 && (
         <section className="mb-10">
           <SectionHeading title="Pace Breakdown" description="Per-step pace visualization" />
-          <Card variant="glass" padding="md">
-            <LapBarChart laps={laps} className="border-0 shadow-none p-0" />
+          <Card variant="glass" padding="md" className="min-w-0">
+            <div className="w-full max-w-full overflow-hidden">
+              <LapBarChart laps={laps} className="border-0 shadow-none p-0" />
+            </div>
           </Card>
         </section>
       )}
@@ -564,24 +597,26 @@ export default function PlannedWorkoutDetailPage() {
       {workoutData.plannedWorkoutJson && (
         <section className="mb-10">
           <SectionHeading title="Workout Plan" description="Garmin-style serialized plan" />
-          <Card variant="glass" padding="md">
-            <pre className="text-xs font-mono text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
-              {workoutData.plannedWorkoutJson}
-            </pre>
+          <Card variant="glass" padding="md" className="min-w-0">
+            <div className="w-full max-w-full overflow-x-auto scrollbar-thin">
+              <pre className="text-xs font-mono text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
+                {workoutData.plannedWorkoutJson}
+              </pre>
+            </div>
           </Card>
         </section>
       )}
 
       {/* Action bar */}
       <div className="sticky bottom-4 z-20">
-        <Card variant="glass" padding="sm" className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-gray-600 dark:text-gray-300">
+        <Card variant="glass" padding="sm" className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+          <div className="min-w-0 text-sm text-gray-600 dark:text-gray-300 break-words">
             {workout.date && <span className="font-medium">{workout.date}</span>}
             {workout.athleteNames?.length ? ` · ${workout.athleteNames.join(", ")}` : ""}
           </div>
           <div className="flex items-center gap-2">
-            <Link href={backUrl}>
-              <Button variant="ghost" size="sm">
+            <Link href={backUrl} className="w-full sm:w-auto">
+              <Button variant="ghost" size="sm" className="w-full sm:w-auto">
                 Back
               </Button>
             </Link>

@@ -228,16 +228,16 @@ export default function SignUpPage() {
         </nav>
       </header>
 
-      <div className="relative flex-1 grid md:grid-cols-2">
+      <div className="relative flex-1 grid md:grid-cols-2 min-w-0">
         <BrandPanel />
 
         {/* Form side */}
-        <main className="relative flex flex-col">
+        <main className="relative flex flex-col min-w-0">
           <div className="hidden md:flex items-center justify-end px-8 pt-6">
             <ThemeToggle />
           </div>
 
-          <div className="relative flex-1 flex items-center justify-center px-6 py-10 md:py-14">
+          <div className="relative flex-1 flex items-center justify-center px-4 sm:px-6 py-10 md:py-14">
             <motion.div
               variants={fadeUp}
               initial="hidden"
@@ -254,7 +254,7 @@ export default function SignUpPage() {
                     transition={{ duration: 0.3 }}
                   >
                     <div className="mb-8 text-center md:text-left">
-                      <h1 className="display-heading text-3xl md:text-4xl text-gray-900 dark:text-gray-50">
+                      <h1 className="display-heading text-2xl sm:text-3xl md:text-4xl text-gray-900 dark:text-gray-50">
                         Join <span className="text-gradient-brand">GooseNet</span>
                       </h1>
                       <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
@@ -360,7 +360,7 @@ export default function SignUpPage() {
                         </svg>
                         Back to role selection
                       </button>
-                      <h1 className="display-heading text-3xl md:text-4xl text-gray-900 dark:text-gray-50">
+                      <h1 className="display-heading text-2xl sm:text-3xl md:text-4xl text-gray-900 dark:text-gray-50">
                         Create your{" "}
                         <span className="text-gradient-brand">
                           {selectedRole === "coach" ? "coach" : "athlete"}

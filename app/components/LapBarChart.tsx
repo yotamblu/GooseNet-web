@@ -60,8 +60,8 @@ export default function LapBarChart({
     return (
       <div
         className={cn(
-          "rounded-2xl border border-gray-200 dark:border-white/10",
-          "bg-white dark:bg-gray-900/60 p-6",
+          "w-full max-w-full min-w-0 rounded-2xl border border-gray-200 dark:border-white/10",
+          "bg-white dark:bg-gray-900/60 p-4 sm:p-6",
           className
         )}
       >
@@ -102,8 +102,8 @@ export default function LapBarChart({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-gray-200 dark:border-white/10",
-        "bg-white dark:bg-gray-900/60 p-6",
+        "w-full max-w-full min-w-0 rounded-2xl border border-gray-200 dark:border-white/10",
+        "bg-white dark:bg-gray-900/60 p-4 sm:p-6",
         "shadow-sm",
         className
       )}
@@ -149,7 +149,7 @@ export default function LapBarChart({
       </svg>
 
       <div
-        className="relative cursor-pointer select-none"
+        className="relative cursor-pointer select-none w-full max-w-full overflow-x-auto overflow-y-visible scrollbar-thin"
         onClick={handleContainerClick}
       >
         {/* Horizontal grid lines */}

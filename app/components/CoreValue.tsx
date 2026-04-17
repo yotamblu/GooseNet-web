@@ -12,7 +12,7 @@ import { fadeUp, inViewOnce, stagger } from "./ui";
 
 export default function CoreValue() {
   return (
-    <section className="relative overflow-hidden bg-white py-24 sm:py-28 lg:py-32 dark:bg-gray-900">
+    <section className="relative w-full max-w-full overflow-hidden bg-white py-16 sm:py-24 lg:py-32 dark:bg-gray-900">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -20,7 +20,7 @@ export default function CoreValue() {
         <div className="absolute left-1/2 top-1/2 h-[520px] w-[min(100%,860px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-teal-400/10 blur-3xl dark:from-blue-500/10 dark:via-purple-500/10 dark:to-teal-400/5" />
       </div>
 
-      <div className="relative mx-auto max-w-4xl px-6 text-center lg:px-8">
+      <div className="relative mx-auto max-w-4xl w-full min-w-0 px-4 sm:px-6 lg:px-8 text-center">
         <motion.div
           variants={stagger}
           initial="hidden"
@@ -36,7 +36,7 @@ export default function CoreValue() {
 
           <motion.blockquote
             variants={fadeUp}
-            className="display-heading mt-5 text-3xl leading-tight text-gray-900 sm:text-4xl lg:text-5xl dark:text-gray-50"
+            className="display-heading mt-5 text-2xl leading-tight text-gray-900 sm:text-3xl md:text-4xl lg:text-5xl break-words dark:text-gray-50"
           >
             <span
               aria-hidden

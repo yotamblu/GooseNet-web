@@ -191,6 +191,15 @@ body {
 /* UTILITIES                                                           */
 /* ------------------------------------------------------------------ */
 
+/* Mobile safety: kill global horizontal scroll. All intentional
+   horizontal scrollers are scoped to their own containers (tabs, nav
+   strips, chart overflow wrappers). */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 /* Aurora background — soft animated blue→purple→teal radial backdrop */
 .bg-aurora {
   position: relative;

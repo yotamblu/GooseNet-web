@@ -315,22 +315,22 @@ function WorkoutDetailPageContent() {
         className="mb-6"
       >
         <Card variant="glass" padding="lg" className="overflow-hidden">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-center gap-4 min-w-0">
+          <div className="flex w-full min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-5">
+            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
               {profilePicData && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={profilePicData}
                   alt={userName || "Athlete"}
                   referrerPolicy="no-referrer"
-                  className="relative h-14 w-14 rounded-full border-2 border-white/80 dark:border-gray-900 object-cover shadow-sm"
+                  className="relative h-12 w-12 shrink-0 rounded-full border-2 border-white/80 object-cover shadow-sm dark:border-gray-900 sm:h-14 sm:w-14"
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = "none";
                   }}
                 />
               )}
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
                   <Badge variant="brand" dot>Running</Badge>
                   {workoutSummary?.workoutDate && (
                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -338,17 +338,17 @@ function WorkoutDetailPageContent() {
                     </span>
                   )}
                 </div>
-                <h1 className="display-heading text-3xl font-bold tracking-tight text-gradient-brand sm:text-4xl">
+                <h1 className="display-heading break-words text-2xl font-bold tracking-tight text-gradient-brand sm:text-3xl md:text-4xl">
                   {workoutSummary?.workoutName || "Running Workout"}
                 </h1>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                <p className="mt-1 truncate text-sm text-gray-600 dark:text-gray-400">
                   {userName || "Athlete"}
                 </p>
               </div>
             </div>
             <div className="shrink-0">
               <Link href={backUrl}>
-                <Button variant="secondary" size="sm">
+                <Button variant="secondary" size="sm" className="w-full sm:w-auto">
                   Back to activities
                 </Button>
               </Link>
@@ -404,15 +404,17 @@ function WorkoutDetailPageContent() {
 
       {/* Tabs */}
       {tabs.length > 1 && (
-        <div className="mb-6">
-          <Tabs<DetailTab>
-            items={tabs}
-            value={activeTab}
-            onChange={setActiveTab}
-            variant="pills"
-            size="md"
-            ariaLabel="Workout sections"
-          />
+        <div className="mb-6 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+          <div className="w-max sm:w-auto">
+            <Tabs<DetailTab>
+              items={tabs}
+              value={activeTab}
+              onChange={setActiveTab}
+              variant="pills"
+              size="md"
+              ariaLabel="Workout sections"
+            />
+          </div>
         </div>
       )}
 
@@ -427,18 +429,24 @@ function WorkoutDetailPageContent() {
         {(activeTab === "overview" || activeTab === "map") && hasMap && (
           <motion.div variants={reduce ? undefined : fadeUp}>
             <Card variant="glass" padding="none" className="overflow-hidden">
-              <div className="p-4 sm:p-5 pb-0">
+              <div className="p-4 pb-0 sm:p-5">
                 <SectionHeading
                   as="h3"
                   title="Route"
                   description="Click and drag to explore the course."
                 />
               </div>
-              <div className="p-4 sm:p-5 pt-2">
-                <ZoomableWorkoutMap
-                  coordinates={coords}
-                  className={activeTab === "map" ? "h-[32rem]" : "h-96"}
-                />
+              <div className="p-4 pt-2 sm:p-5">
+                <div className="w-full max-w-full overflow-hidden rounded-xl">
+                  <ZoomableWorkoutMap
+                    coordinates={coords}
+                    className={
+                      activeTab === "map"
+                        ? "h-64 w-full sm:h-80 md:h-[32rem]"
+                        : "h-64 w-full sm:h-80 md:h-96"
+                    }
+                  />
+                </div>
               </div>
             </Card>
           </motion.div>
@@ -447,11 +455,13 @@ function WorkoutDetailPageContent() {
         {/* SPLITS */}
         {(activeTab === "overview" || activeTab === "splits") && hasLaps && (
           <motion.div variants={reduce ? undefined : fadeUp}>
-            <LapBarChart
-              laps={workoutData.workoutLaps}
-              selectedLapIndex={selectedLapIndex}
-              onLapClick={handleLapSelection}
-            />
+            <div className="w-full max-w-full overflow-hidden">
+              <LapBarChart
+                laps={workoutData.workoutLaps}
+                selectedLapIndex={selectedLapIndex}
+                onLapClick={handleLapSelection}
+              />
+            </div>
           </motion.div>
         )}
 
@@ -476,15 +486,15 @@ function WorkoutDetailPageContent() {
               }}
             >
               <SectionHeading as="h3" title="Laps" description="Tap a row to highlight it on the bar chart." />
-              <div className="overflow-x-auto">
-                <table className="w-full">
+              <div className="-mx-4 w-[calc(100%+2rem)] overflow-x-auto sm:mx-0 sm:w-full">
+                <table className="min-w-full">
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-white/10">
-                      <th className="text-left py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Lap</th>
-                      <th className="text-right py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Distance</th>
-                      <th className="text-right py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Duration</th>
-                      <th className="text-right py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Pace</th>
-                      <th className="text-right py-2.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Avg HR</th>
+                      <th className="px-2 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 sm:px-3">Lap</th>
+                      <th className="px-2 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 sm:px-3">Distance</th>
+                      <th className="px-2 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 sm:px-3">Duration</th>
+                      <th className="px-2 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 sm:px-3">Pace</th>
+                      <th className="px-2 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 sm:px-3">Avg HR</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -496,9 +506,9 @@ function WorkoutDetailPageContent() {
                           ref={(el) => {
                             lapRowRefs.current[index] = el;
                           }}
-                          className={`border-b border-gray-100 dark:border-white/5 transition-colors cursor-pointer ${
+                          className={`cursor-pointer border-b border-gray-100 transition-colors dark:border-white/5 ${
                             isSelected
-                              ? "bg-blue-50/80 dark:bg-blue-500/10 ring-1 ring-blue-500/40"
+                              ? "bg-blue-50/80 ring-1 ring-blue-500/40 dark:bg-blue-500/10"
                               : "hover:bg-gray-50 dark:hover:bg-white/5"
                           }`}
                           onClick={(e) => {
@@ -506,19 +516,19 @@ function WorkoutDetailPageContent() {
                             handleLapSelection(isSelected ? null : index);
                           }}
                         >
-                          <td className="py-2.5 px-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          <td className="whitespace-nowrap px-2 py-2.5 text-sm font-semibold text-gray-900 dark:text-gray-100 sm:px-3">
                             {index + 1}
                           </td>
-                          <td className="py-2.5 px-3 text-sm text-right text-gray-700 dark:text-gray-300 tabular-nums">
+                          <td className="whitespace-nowrap px-2 py-2.5 text-right text-sm tabular-nums text-gray-700 dark:text-gray-300 sm:px-3">
                             {lap.lapDistanceInKilometers.toFixed(2)} km
                           </td>
-                          <td className="py-2.5 px-3 text-sm text-right text-gray-700 dark:text-gray-300 tabular-nums">
+                          <td className="whitespace-nowrap px-2 py-2.5 text-right text-sm tabular-nums text-gray-700 dark:text-gray-300 sm:px-3">
                             {formatDuration(lap.lapDurationInSeconds)}
                           </td>
-                          <td className="py-2.5 px-3 text-sm text-right text-gray-900 dark:text-gray-100 font-semibold tabular-nums">
+                          <td className="whitespace-nowrap px-2 py-2.5 text-right text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100 sm:px-3">
                             {formatPace(lap.lapPaceInMinKm)} /km
                           </td>
-                          <td className="py-2.5 px-3 text-sm text-right text-gray-700 dark:text-gray-300 tabular-nums">
+                          <td className="whitespace-nowrap px-2 py-2.5 text-right text-sm tabular-nums text-gray-700 dark:text-gray-300 sm:px-3">
                             {lap.avgHeartRate > 0 ? `${formatHR(lap.avgHeartRate)} bpm` : "—"}
                           </td>
                         </tr>
@@ -535,43 +545,49 @@ function WorkoutDetailPageContent() {
         {(activeTab === "overview" || activeTab === "analysis") && hasCharts && (
           <>
             <motion.div variants={reduce ? undefined : fadeUp}>
-              <WorkoutChart
-                data={heartRateData}
-                title="Heart rate"
-                unit="bpm"
-                color="#ef4444"
-                minValue={Math.min(...heartRateData, 0)}
-                maxValue={Math.max(...heartRateData, 200)}
-                timeData={timeData}
-              />
+              <div className="w-full max-w-full overflow-hidden">
+                <WorkoutChart
+                  data={heartRateData}
+                  title="Heart rate"
+                  unit="bpm"
+                  color="#ef4444"
+                  minValue={Math.min(...heartRateData, 0)}
+                  maxValue={Math.max(...heartRateData, 200)}
+                  timeData={timeData}
+                />
+              </div>
             </motion.div>
             <motion.div variants={reduce ? undefined : fadeUp}>
-              <WorkoutChart
-                data={paceData}
-                title="Pace"
-                unit="min/km"
-                color="#3b82f6"
-                minValue={0}
-                maxValue={Math.max(...paceData, 10)}
-                timeData={timeData}
-                invertYAxis={true}
-                formatValue={(value) => {
-                  const minutes = Math.floor(value);
-                  const seconds = Math.round((value - minutes) * 60);
-                  return `${minutes}:${seconds.toString().padStart(2, "0")} /km`;
-                }}
-              />
+              <div className="w-full max-w-full overflow-hidden">
+                <WorkoutChart
+                  data={paceData}
+                  title="Pace"
+                  unit="min/km"
+                  color="#3b82f6"
+                  minValue={0}
+                  maxValue={Math.max(...paceData, 10)}
+                  timeData={timeData}
+                  invertYAxis={true}
+                  formatValue={(value) => {
+                    const minutes = Math.floor(value);
+                    const seconds = Math.round((value - minutes) * 60);
+                    return `${minutes}:${seconds.toString().padStart(2, "0")} /km`;
+                  }}
+                />
+              </div>
             </motion.div>
             <motion.div variants={reduce ? undefined : fadeUp}>
-              <WorkoutChart
-                data={elevationData}
-                title="Elevation"
-                unit="m"
-                color="#10b981"
-                minValue={Math.min(...elevationData, 0)}
-                maxValue={Math.max(...elevationData, 1000)}
-                timeData={timeData}
-              />
+              <div className="w-full max-w-full overflow-hidden">
+                <WorkoutChart
+                  data={elevationData}
+                  title="Elevation"
+                  unit="m"
+                  color="#10b981"
+                  minValue={Math.min(...elevationData, 0)}
+                  maxValue={Math.max(...elevationData, 1000)}
+                  timeData={timeData}
+                />
+              </div>
             </motion.div>
           </>
         )}

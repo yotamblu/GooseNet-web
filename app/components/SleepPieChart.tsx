@@ -134,7 +134,7 @@ export default function SleepPieChart({
 
   return (
     <div
-      className={`flex flex-col items-center gap-4 ${className}`}
+      className={`flex w-full max-w-full min-w-0 flex-col items-center gap-4 ${className}`}
       role="img"
       aria-label={`Sleep breakdown: deep ${segments[0].percent.toFixed(
         0
@@ -142,7 +142,7 @@ export default function SleepPieChart({
         0
       )}%, awake ${segments[3].percent.toFixed(0)}%`}
     >
-      <div className="relative">
+      <div className="relative w-full max-w-[180px] aspect-square">
         {/* Soft ambient glow behind the ring */}
         <div
           aria-hidden
@@ -154,10 +154,9 @@ export default function SleepPieChart({
         />
 
         <svg
-          width={SIZE}
-          height={SIZE}
           viewBox={`0 0 ${SIZE} ${SIZE}`}
-          className="-rotate-90"
+          className="-rotate-90 w-full h-full max-w-full"
+          preserveAspectRatio="xMidYMid meet"
         >
           <defs>
             {segments.map((s) => (

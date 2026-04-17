@@ -569,15 +569,15 @@ export default function DashboardPage() {
               aria-hidden
               className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-gradient-to-br from-blue-500/25 via-purple-500/20 to-teal-400/20 blur-3xl"
             />
-            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-4">
+              <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-4">
                 <div
-                  className={`inline-flex h-12 w-12 items-center justify-center rounded-xl ${ACCENT_ICON_BG.brand}`}
+                  className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${ACCENT_ICON_BG.brand}`}
                 >
                   {IconGarmin}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
                     <CardTitle className="text-lg">Garmin Sync</CardTitle>
                     <Badge variant="info" size="sm" dot>
                       Integration
@@ -618,13 +618,14 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
                 <Button
                   variant="gradient"
                   size="lg"
                   onClick={handleGarminSync}
                   loading={isCheckingConnection}
                   disabled={isCheckingConnection}
+                  className="w-full sm:w-auto"
                 >
                   {isCheckingConnection ? "Checking…" : "Connect Garmin"}
                 </Button>

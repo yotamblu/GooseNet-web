@@ -67,15 +67,15 @@ function FooterLinkItem({ link }: { link: FooterLink }) {
 
 export default function Footer() {
   return (
-    <footer className="relative border-t border-gray-200/70 dark:border-white/10 bg-white/60 dark:bg-gray-950/60 backdrop-blur-xl">
+    <footer className="relative w-full max-w-full border-t border-gray-200/70 dark:border-white/10 bg-white/60 dark:bg-gray-950/60 backdrop-blur-xl">
       {/* Soft top glow */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent"
       />
 
-      <div className="mx-auto max-w-7xl px-6 py-10 lg:px-8">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,minmax(0,1fr))]">
+      <div className="mx-auto max-w-7xl w-full min-w-0 px-4 sm:px-6 lg:px-8 py-10">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-[1.4fr_repeat(3,minmax(0,1fr))] md:gap-10">
           {/* Brand block */}
           <div className="min-w-0">
             <Link href="/" className="inline-flex items-center gap-2.5">
@@ -130,10 +130,10 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 flex flex-col items-center justify-between gap-2 border-t border-gray-200/70 dark:border-white/10 pt-6 sm:flex-row">
-          <p className="text-xs text-gray-500 dark:text-gray-500">
+          <p className="text-xs text-gray-500 dark:text-gray-500 break-words text-center sm:text-left">
             &copy; {new Date().getFullYear()} GooseNet. All rights reserved.
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-500">
+          <p className="text-xs text-gray-500 dark:text-gray-500 break-words text-center sm:text-right">
             Built for runners. <span className="text-gradient-brand font-semibold">Powered by data.</span>
           </p>
         </div>

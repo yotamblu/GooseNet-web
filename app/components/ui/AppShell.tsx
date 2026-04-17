@@ -92,15 +92,15 @@ export default function AppShell({
   return (
     <div
       className={cn(
-        "relative flex min-h-screen flex-col",
+        "relative flex min-h-screen flex-col w-full max-w-full min-w-0 overflow-x-hidden",
         !plainBackground && "bg-aurora-subtle",
         "bg-white dark:bg-[#0b0f17]",
         className
       )}
     >
       {/* Top bar */}
-      <header className="sticky top-0 z-40 border-b border-gray-200/60 dark:border-white/10 bg-white/70 dark:bg-gray-950/60 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 h-16">
+      <header className="sticky top-0 z-40 w-full max-w-full border-b border-gray-200/60 dark:border-white/10 bg-white/70 dark:bg-gray-950/60 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-4 px-4 sm:px-6 lg:px-8 h-16">
           <Link href={authed ? "/dashboard" : "/"} className="group flex items-center gap-2 shrink-0">
             <motion.span
               whileHover={reduce ? undefined : { rotate: -8, scale: 1.05 }}
@@ -120,7 +120,7 @@ export default function AppShell({
                 priority
               />
             </motion.span>
-            <span className="text-base font-semibold tracking-tight text-gray-900 dark:text-gray-50">
+            <span className="hidden sm:inline text-base font-semibold tracking-tight text-gray-900 dark:text-gray-50">
               GooseNet
             </span>
           </Link>
@@ -202,9 +202,9 @@ export default function AppShell({
         {/* Mobile nav (scrollable row) */}
         {!hideNav && authed && (
           <div className="md:hidden border-t border-gray-200/60 dark:border-white/10">
-            <div className="mx-auto max-w-7xl overflow-x-auto px-2">
+            <div className="mx-auto max-w-7xl overflow-x-auto scrollbar-thin px-2">
               <nav
-                className="flex items-center gap-1 py-2 whitespace-nowrap"
+                className="flex items-center gap-1 py-2 whitespace-nowrap min-w-0"
                 aria-label="Primary (mobile)"
               >
                 {navItems.map((item) => {
@@ -232,7 +232,7 @@ export default function AppShell({
       </header>
 
       {/* Main content */}
-      <main className="relative flex-1">
+      <main className="relative flex-1 w-full min-w-0 max-w-full">
         <PageContainer width={maxWidth}>
           {title && !hidePageHeader && (
             <PageHeader

@@ -120,7 +120,7 @@ const ACCENT_ICON_BG: Record<Point["accent"], string> = {
 
 export default function WhyGooseNet() {
   return (
-    <section className="relative overflow-hidden bg-gray-50 py-24 sm:py-28 lg:py-32 dark:bg-gray-950">
+    <section className="relative w-full max-w-full overflow-hidden bg-gray-50 py-16 sm:py-24 lg:py-32 dark:bg-gray-950">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -129,7 +129,7 @@ export default function WhyGooseNet() {
         <div className="absolute -bottom-20 -left-16 h-80 w-80 rounded-full bg-purple-500/15 blur-3xl dark:bg-purple-500/10" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+      <div className="relative mx-auto max-w-7xl w-full min-w-0 px-4 sm:px-6 lg:px-8">
         <motion.div
           variants={stagger}
           initial="hidden"
@@ -150,7 +150,7 @@ export default function WhyGooseNet() {
             initial="hidden"
             whileInView="show"
             viewport={inViewOnce}
-            className="mx-auto mt-14 grid max-w-2xl grid-cols-1 gap-5 sm:grid-cols-2 lg:max-w-none lg:grid-cols-3"
+            className="mx-auto mt-10 sm:mt-14 grid w-full max-w-2xl grid-cols-1 gap-5 sm:grid-cols-2 lg:max-w-none lg:grid-cols-3"
           >
             {POINTS.map((p) => (
               <motion.li key={p.title} variants={fadeUp}>

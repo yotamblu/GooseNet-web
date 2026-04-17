@@ -57,7 +57,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen min-h-[100dvh] bg-white dark:bg-gray-900">
+    <main className="min-h-screen min-h-[100dvh] w-full max-w-full min-w-0 overflow-x-hidden bg-white dark:bg-gray-900">
       <Header />
       <Hero />
       <AnimatedDemoSection />

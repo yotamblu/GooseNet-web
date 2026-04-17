@@ -70,7 +70,7 @@ export default function HowItWorks() {
   return (
     <section
       id="how-it-works"
-      className="relative overflow-hidden bg-white py-24 sm:py-28 lg:py-32 dark:bg-gray-900"
+      className="relative w-full max-w-full overflow-hidden bg-white py-16 sm:py-24 lg:py-32 dark:bg-gray-900"
     >
       <div
         aria-hidden
@@ -80,7 +80,7 @@ export default function HowItWorks() {
         <div className="absolute -bottom-24 right-1/4 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl dark:bg-blue-500/12" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+      <div className="relative mx-auto max-w-7xl w-full min-w-0 px-4 sm:px-6 lg:px-8">
         <motion.div
           variants={stagger}
           initial="hidden"
@@ -96,7 +96,7 @@ export default function HowItWorks() {
             />
           </motion.div>
 
-          <div className="relative mx-auto mt-16 max-w-6xl">
+          <div className="relative mx-auto mt-10 sm:mt-16 w-full max-w-6xl">
             {/* Desktop connector rail */}
             <div
               aria-hidden
@@ -108,7 +108,7 @@ export default function HowItWorks() {
               initial="hidden"
               whileInView="show"
               viewport={inViewOnce}
-              className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8"
+              className="grid grid-cols-1 gap-6 sm:grid-cols-3 lg:gap-8"
             >
               {STEPS.map((step) => (
                 <motion.li key={step.number} variants={fadeUp} className="h-full">

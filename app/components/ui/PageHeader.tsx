@@ -40,20 +40,20 @@ export default function PageHeader({
     <motion.header
       {...enter}
       className={cn(
-        "flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between",
+        "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
         spaced && "mb-6 sm:mb-8",
         className
       )}
     >
-      <div className="min-w-0">
+      <div className="min-w-0 max-w-full">
         {eyebrow && (
-          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-blue-600 dark:text-blue-400">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-blue-600 dark:text-blue-400 break-words">
             {eyebrow}
           </div>
         )}
         <h1
           className={cn(
-            "display-heading text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight",
+            "display-heading text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight break-words",
             gradient
               ? "text-gradient-brand"
               : "text-gray-900 dark:text-gray-50"

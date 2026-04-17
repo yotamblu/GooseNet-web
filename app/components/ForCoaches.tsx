@@ -92,7 +92,7 @@ export default function ForCoaches() {
   return (
     <section
       id="for-coaches"
-      className="relative overflow-hidden bg-white py-24 sm:py-28 lg:py-32 dark:bg-gray-900"
+      className="relative w-full max-w-full overflow-hidden bg-white py-16 sm:py-24 lg:py-32 dark:bg-gray-900"
     >
       <div
         aria-hidden
@@ -103,7 +103,7 @@ export default function ForCoaches() {
         className="pointer-events-none absolute -right-32 bottom-1/4 h-80 w-80 rounded-full bg-purple-500/10 blur-3xl dark:bg-purple-500/10"
       />
 
-      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+      <div className="relative mx-auto max-w-7xl w-full min-w-0 px-4 sm:px-6 lg:px-8">
         <motion.div
           variants={stagger}
           initial="hidden"

@@ -220,7 +220,7 @@ function AthleteDashboardPageContent() {
             aria-hidden
             className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-gradient-to-br from-blue-500/30 via-purple-500/20 to-teal-400/20 blur-3xl"
           />
-          <div className="relative">
+          <div className="relative shrink-0">
             <span
               aria-hidden
               className="absolute inset-0 -m-1.5 rounded-full bg-gradient-to-tr from-blue-500/70 via-purple-500/60 to-teal-400/60 blur-md"
@@ -245,23 +245,29 @@ function AthleteDashboardPageContent() {
             <div className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600 dark:text-blue-300">
               Athlete profile
             </div>
-            <h1 className="mt-1 text-3xl sm:text-4xl lg:text-5xl display-heading font-bold tracking-tight text-gradient-brand">
+            <h1 className="mt-1 break-words text-3xl sm:text-4xl lg:text-5xl display-heading font-bold tracking-tight text-gradient-brand">
               {displayName}
             </h1>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Badge variant="brand" dot>
                 Athlete
               </Badge>
-              <Badge variant="neutral">Coached by {user?.userName ?? "you"}</Badge>
+              <Badge variant="neutral" className="min-w-0 break-words">
+                Coached by {user?.userName ?? "you"}
+              </Badge>
             </div>
           </div>
 
-          <div className="relative flex flex-wrap items-center gap-2">
-            <Link href={plannedHref}>
-              <Button variant="secondary">Planned</Button>
+          <div className="relative flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+            <Link href={plannedHref} className="block w-full sm:w-auto">
+              <Button variant="secondary" className="w-full sm:w-auto">
+                Planned
+              </Button>
             </Link>
-            <Link href={addWorkoutHref}>
-              <Button variant="gradient">Add workout</Button>
+            <Link href={addWorkoutHref} className="block w-full sm:w-auto">
+              <Button variant="gradient" className="w-full sm:w-auto">
+                Add workout
+              </Button>
             </Link>
           </div>
         </div>
@@ -269,17 +275,19 @@ function AthleteDashboardPageContent() {
 
       {/* Tabs */}
       <div className="mt-8">
-        <Tabs<AthleteTab>
-          items={[
-            { value: "overview", label: "Overview" },
-            { value: "planned", label: "Planned" },
-            { value: "activity", label: "Activity" },
-          ]}
-          value={activeTab}
-          onChange={(v) => setActiveTab(v)}
-          variant="underline"
-          ariaLabel="Athlete sections"
-        />
+        <div className="-mx-4 overflow-x-auto scrollbar-thin px-4 sm:mx-0 sm:px-0">
+          <Tabs<AthleteTab>
+            items={[
+              { value: "overview", label: "Overview" },
+              { value: "planned", label: "Planned" },
+              { value: "activity", label: "Activity" },
+            ]}
+            value={activeTab}
+            onChange={(v) => setActiveTab(v)}
+            variant="underline"
+            ariaLabel="Athlete sections"
+          />
+        </div>
 
         <div className="mt-6">
           {activeTab === "overview" && (

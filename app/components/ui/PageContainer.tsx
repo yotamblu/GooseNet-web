@@ -31,7 +31,7 @@ const PageContainer = forwardRef<HTMLDivElement, PageContainerProps>(function Pa
     <Comp
       ref={ref}
       className={cn(
-        "mx-auto w-full px-4 sm:px-6 lg:px-8",
+        "mx-auto w-full min-w-0 max-w-full px-4 sm:px-6 lg:px-8",
         WIDTHS[width],
         padded && "py-6 sm:py-8 lg:py-10",
         className

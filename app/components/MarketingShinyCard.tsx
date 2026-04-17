@@ -66,7 +66,7 @@ export default function MarketingShinyCard({
       onPointerLeave={handleLeave}
       style={style}
       className={cn(
-        "group relative rounded-2xl p-[1px] transition-shadow duration-300",
+        "group relative w-full max-w-full min-w-0 rounded-2xl p-[1px] transition-shadow duration-300",
         "shadow-lg shadow-blue-500/5 hover:shadow-xl hover:shadow-purple-500/15",
         "dark:shadow-blue-500/10 dark:hover:shadow-purple-500/20",
         className,

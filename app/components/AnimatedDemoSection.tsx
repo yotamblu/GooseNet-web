@@ -100,14 +100,14 @@ export default function AnimatedDemoSection() {
   return (
     <section
       id="demo"
-      className="relative isolate overflow-hidden bg-gray-50 py-24 sm:py-28 lg:py-32 dark:bg-gray-950"
+      className="relative isolate w-full max-w-full overflow-hidden bg-gray-50 py-16 sm:py-24 lg:py-32 dark:bg-gray-950"
     >
       <div
         aria-hidden
         className="pointer-events-none absolute -top-32 left-1/2 h-[520px] w-[min(100%,900px)] -translate-x-1/2 rounded-full bg-gradient-to-br from-blue-500/15 via-purple-500/15 to-teal-400/10 blur-3xl dark:from-blue-500/10 dark:via-purple-500/10 dark:to-teal-400/5"
       />
 
-      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+      <div className="relative mx-auto max-w-7xl w-full min-w-0 px-4 sm:px-6 lg:px-8">
         <motion.div
           variants={stagger}
           initial="hidden"
@@ -125,7 +125,7 @@ export default function AnimatedDemoSection() {
 
           {/* Flow */}
           <div
-            className="relative mt-12 grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[1fr_auto_1fr] lg:gap-8"
+            className="relative mt-10 sm:mt-12 grid w-full grid-cols-1 items-stretch gap-6 lg:grid-cols-[1fr_auto_1fr] lg:gap-8"
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
             onFocus={() => setPaused(true)}
@@ -238,7 +238,7 @@ function PanelFrame({
       : "bg-purple-500 shadow-[0_0_0_4px_rgba(168,85,247,0.15)]";
 
   return (
-    <div className="glass-surface relative h-full min-h-[420px] overflow-hidden rounded-2xl shadow-xl">
+    <div className="glass-surface relative h-full min-h-[420px] w-full max-w-full min-w-0 mx-auto overflow-hidden rounded-2xl shadow-xl">
       <div className="flex items-center justify-between border-b border-white/40 px-4 py-3 dark:border-white/10">
         <div className="flex items-center gap-2">
           <span className={`h-2 w-2 rounded-full ${dot}`} aria-hidden />

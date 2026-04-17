@@ -177,7 +177,7 @@ function ConnectCoachPageContent() {
                     placeholder="Paste or type your coach’s code"
                     required
                     autoFocus
-                    className="w-full rounded-xl border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-900/60 pl-10 pr-4 py-3 text-base sm:text-lg font-mono tracking-wider text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 placeholder:font-sans placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 dark:focus:border-blue-400 transition-colors"
+                    className="block w-full min-w-0 rounded-xl border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-900/60 pl-10 pr-4 py-3 text-base sm:text-lg font-mono tracking-wider text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 placeholder:font-sans placeholder:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 dark:focus:border-blue-400 transition-colors"
                   />
                 </div>
                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">

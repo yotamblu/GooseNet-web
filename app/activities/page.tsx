@@ -493,35 +493,43 @@ function ActivitiesPageContent() {
       }
     >
       {/* Filter / view bar */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Tabs<ViewMode>
-          items={[
-            { value: "feed", label: "Feed" },
-            { value: "date", label: "By date" },
-          ]}
-          value={viewMode}
-          onChange={(v) => {
-            setViewMode(v);
-            setRunningWorkouts([]);
-            setStrengthWorkouts([]);
-          }}
-          variant="pills"
-          size="sm"
-          ariaLabel="View mode"
-        />
+      <div className="mb-6 flex w-full max-w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+          <div className="w-max sm:w-auto">
+            <Tabs<ViewMode>
+              items={[
+                { value: "feed", label: "Feed" },
+                { value: "date", label: "By date" },
+              ]}
+              value={viewMode}
+              onChange={(v) => {
+                setViewMode(v);
+                setRunningWorkouts([]);
+                setStrengthWorkouts([]);
+              }}
+              variant="pills"
+              size="sm"
+              ariaLabel="View mode"
+            />
+          </div>
+        </div>
 
-        <Tabs<TypeFilter>
-          items={[
-            { value: "all", label: "All" },
-            { value: "running", label: "Running", icon: <RunIcon className="h-3.5 w-3.5" /> },
-            { value: "strength", label: "Strength", icon: <DumbbellIcon className="h-3.5 w-3.5" /> },
-          ]}
-          value={typeFilter}
-          onChange={setTypeFilter}
-          variant="pills"
-          size="sm"
-          ariaLabel="Activity type"
-        />
+        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+          <div className="w-max sm:w-auto">
+            <Tabs<TypeFilter>
+              items={[
+                { value: "all", label: "All" },
+                { value: "running", label: "Running", icon: <RunIcon className="h-3.5 w-3.5" /> },
+                { value: "strength", label: "Strength", icon: <DumbbellIcon className="h-3.5 w-3.5" /> },
+              ]}
+              value={typeFilter}
+              onChange={setTypeFilter}
+              variant="pills"
+              size="sm"
+              ariaLabel="Activity type"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Date picker */}
@@ -531,7 +539,7 @@ function ActivitiesPageContent() {
             onSubmit={handleDateSubmit}
             className="flex flex-col gap-3 sm:flex-row sm:items-end"
           >
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <Input
                 type="date"
                 label="Select date"
@@ -541,6 +549,7 @@ function ActivitiesPageContent() {
                   setSelectedDate(parseDateInput(e.target.value));
                 }}
                 helperText={selectedDate ? `Selected: ${selectedDate}` : "Pick a date to see workouts"}
+                className="w-full"
               />
             </div>
             <Button
@@ -548,6 +557,7 @@ function ActivitiesPageContent() {
               variant="primary"
               loading={loading}
               disabled={loading || !selectedDate}
+              className="w-full sm:w-auto"
             >
               Fetch workouts
             </Button>
@@ -625,26 +635,26 @@ function ActivitiesPageContent() {
                       interactive
                       className="overflow-hidden"
                     >
-                      <div className="flex flex-col lg:flex-row">
-                        <div className="flex-1 p-6 flex flex-col">
-                          <div className="flex items-center gap-3 mb-5">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/15 to-purple-500/15 text-blue-600 dark:text-blue-400 ring-1 ring-inset ring-blue-500/20">
+                      <div className="flex w-full min-w-0 flex-col lg:flex-row">
+                        <div className="flex min-w-0 flex-1 flex-col p-4 sm:p-6">
+                          <div className="mb-5 flex min-w-0 items-center gap-3">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/15 to-purple-500/15 text-blue-600 dark:text-blue-400 ring-1 ring-inset ring-blue-500/20">
                               <RunIcon className="h-6 w-6" />
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <h3 className="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50 truncate">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <h3 className="min-w-0 flex-1 truncate text-base font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-lg">
                                   {workout.workoutName || "Running"}
                                 </h3>
                                 <Badge variant="brand" size="sm">Run</Badge>
                               </div>
-                              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1">
+                              <p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
                                 {workout.workoutDate}
                               </p>
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 mt-auto">
+                          <div className="mt-auto grid grid-cols-2 gap-x-3 gap-y-3 sm:gap-x-4 sm:grid-cols-4">
                             <RunningStat label="Distance" value={formatDistance(workout.workoutDistanceInMeters)} unit="km" />
                             <RunningStat label="Duration" value={formatDuration(workout.workoutDurationInSeconds)} />
                             {workout.workoutAvgPaceInMinKm && workout.workoutAvgPaceInMinKm > 0 && !isNaN(workout.workoutAvgPaceInMinKm) ? (
@@ -656,7 +666,7 @@ function ActivitiesPageContent() {
                           </div>
                         </div>
 
-                        <div className="w-full lg:w-[45%] h-56 lg:h-auto min-h-[200px] p-3 lg:p-4">
+                        <div className="h-56 w-full min-w-0 overflow-hidden p-3 lg:h-auto lg:w-[45%] lg:min-h-[200px] lg:p-4">
                           {coords.length > 0 ? (
                             <WorkoutMap coordinates={coords} className="h-full w-full" />
                           ) : (
@@ -689,18 +699,18 @@ function ActivitiesPageContent() {
                 interactive={!!workoutIdStr}
                 className={!workoutIdStr ? "opacity-70" : undefined}
               >
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/15 to-rose-500/10 text-purple-600 dark:text-purple-400 ring-1 ring-inset ring-purple-500/20">
+                <div className="mb-3 flex min-w-0 items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/15 to-rose-500/10 text-purple-600 dark:text-purple-400 ring-1 ring-inset ring-purple-500/20">
                     <DumbbellIcon className="h-6 w-6" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50 truncate">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <h3 className="min-w-0 flex-1 truncate text-base font-bold tracking-tight text-gray-900 dark:text-gray-50 sm:text-lg">
                         {workout.workoutName || "Strength Workout"}
                       </h3>
                       <Badge variant="info" size="sm">Strength</Badge>
                     </div>
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="mt-1 text-xs font-medium text-gray-500 dark:text-gray-400">
                       {workout.workoutDate}
                     </p>
                   </div>
@@ -844,11 +854,11 @@ function ActivitiesPageContent() {
 
 function RunningStat({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
-    <div>
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+    <div className="min-w-0">
+      <div className="truncate text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
         {label}
       </div>
-      <div className="mt-1 text-lg font-bold tabular-nums tracking-tight text-gray-900 dark:text-gray-50">
+      <div className="mt-1 truncate text-base font-bold tabular-nums tracking-tight text-gray-900 dark:text-gray-50 sm:text-lg">
         {value}
         {unit && (
           <span className="ml-1 text-xs font-medium text-gray-500 dark:text-gray-400">

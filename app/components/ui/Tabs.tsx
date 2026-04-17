@@ -62,13 +62,14 @@ export default function Tabs<V extends string = string>({
       role="tablist"
       aria-label={ariaLabel}
       className={cn(
-        "relative inline-flex gap-1",
+        "relative inline-flex gap-1 max-w-full overflow-x-auto scrollbar-thin",
         isPills
           ? "p-1 rounded-xl bg-gray-100/80 dark:bg-white/5 border border-gray-200 dark:border-white/10"
           : "border-b border-gray-200 dark:border-white/10",
         fullWidth && "w-full",
         className
       )}
+      style={{ scrollSnapType: "x proximity" }}
     >
       {items.map((item) => {
         const selected = item.value === active;
@@ -81,11 +82,12 @@ export default function Tabs<V extends string = string>({
             aria-disabled={item.disabled || undefined}
             disabled={item.disabled}
             onClick={() => !item.disabled && handleClick(item.value)}
+            style={{ scrollSnapAlign: "start" }}
             className={cn(
-              "relative inline-flex items-center justify-center gap-2 font-medium",
+              "relative inline-flex items-center justify-center gap-2 font-medium whitespace-nowrap shrink-0",
               "transition-colors duration-200 focus-visible:outline-none",
               SIZE[size],
-              fullWidth && "flex-1",
+              fullWidth && "flex-1 min-w-0",
               isPills ? "rounded-lg" : "rounded-none",
               selected
                 ? isPills

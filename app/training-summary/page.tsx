@@ -477,7 +477,7 @@ function TrainingSummaryPageContent() {
           </div>
         )}
         {error && !error.includes("date") && (
-          <div className="mt-4 rounded-lg border border-rose-300/60 bg-rose-50/70 p-3 text-sm text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300">
+          <div className="mt-4 rounded-lg border border-rose-300/60 bg-rose-50/70 p-3 text-sm text-rose-700 break-words dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300">
             {error}
           </div>
         )}
@@ -486,7 +486,7 @@ function TrainingSummaryPageContent() {
       {/* Loading skeleton */}
       {loading && (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} h={108} className="rounded-2xl" />
             ))}
@@ -503,7 +503,7 @@ function TrainingSummaryPageContent() {
             variants={stagger}
             initial="hidden"
             animate="show"
-            className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4"
+            className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4"
           >
             <motion.div variants={fadeUp}>
               <StatTile
@@ -554,9 +554,9 @@ function TrainingSummaryPageContent() {
           {/* Charts row */}
           <div className="mb-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
             {/* Distance by day */}
-            <Card variant="glass" padding="lg">
+            <Card variant="glass" padding="lg" className="min-w-0">
               <CardHeader>
-                <div>
+                <div className="min-w-0">
                   <CardTitle>Distance by day</CardTitle>
                   <CardDescription>
                     Kilometres per day across the selected range
@@ -564,14 +564,16 @@ function TrainingSummaryPageContent() {
                 </div>
               </CardHeader>
               {byDay.length > 0 ? (
-                <div className="flex items-stretch gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-                  {byDay.map((d, i) => {
-                    const h = d.km > 0 ? Math.max(2, (d.km / distByDayMax) * 100) : 0;
-                    return (
-                      <div
-                        key={d.date}
-                        className="flex min-w-[28px] flex-1 flex-col items-center gap-2"
-                      >
+                <div className="w-full max-w-full overflow-hidden rounded-xl">
+                  <div className="overflow-x-auto scrollbar-thin pb-2">
+                    <div className="flex w-max items-stretch gap-1.5">
+                    {byDay.map((d, i) => {
+                      const h = d.km > 0 ? Math.max(2, (d.km / distByDayMax) * 100) : 0;
+                      return (
+                        <div
+                          key={d.date}
+                          className="flex min-w-[28px] flex-col items-center gap-2"
+                        >
                         {/* Bar area: owns its own fixed height so % heights
                             resolve reliably (items-stretch won't help here
                             because we may overflow horizontally). */}
@@ -598,6 +600,8 @@ function TrainingSummaryPageContent() {
                       </div>
                     );
                   })}
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -675,8 +679,8 @@ function TrainingSummaryPageContent() {
                       >
                         <Card variant="glass" padding="none" interactive className="overflow-hidden">
                           <div className="flex flex-col lg:flex-row">
-                            <div className="flex flex-1 flex-col p-6">
-                              <div className="mb-5 flex items-center gap-3">
+                            <div className="flex min-w-0 flex-1 flex-col p-6">
+                              <div className="mb-5 flex min-w-0 items-center gap-3">
                                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 shadow-sm">
                                   <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -697,7 +701,7 @@ function TrainingSummaryPageContent() {
                                 )}
                               </div>
 
-                              <div className="grid grid-cols-2 gap-3">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                 <StatPill
                                   label="Distance"
                                   value={formatDistance(workout.workoutDistanceInMeters)}
@@ -823,9 +827,9 @@ function RangeRow({
   const span = hi - lo || 1;
   const pct = Math.max(0, Math.min(100, ((value - lo) / span) * 100));
   return (
-    <div>
-      <div className="mb-1.5 flex items-baseline justify-between text-sm">
-        <span className="font-medium text-gray-700 dark:text-gray-200">
+    <div className="min-w-0">
+      <div className="mb-1.5 flex min-w-0 items-baseline justify-between gap-2 text-sm">
+        <span className="truncate font-medium text-gray-700 dark:text-gray-200">
           {label}
         </span>
         <span className="tabular-nums font-semibold text-gray-900 dark:text-gray-50">

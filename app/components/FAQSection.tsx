@@ -22,7 +22,7 @@ export default function FAQSection() {
   return (
     <section
       id="faq"
-      className="relative overflow-hidden bg-white py-24 sm:py-28 lg:py-32 dark:bg-gray-900"
+      className="relative w-full max-w-full overflow-hidden bg-white py-16 sm:py-24 lg:py-32 dark:bg-gray-900"
     >
       <div
         aria-hidden
@@ -32,7 +32,7 @@ export default function FAQSection() {
         <div className="absolute -bottom-24 right-1/4 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl dark:bg-blue-500/12" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+      <div className="relative mx-auto max-w-7xl w-full min-w-0 px-4 sm:px-6 lg:px-8">
         <motion.div
           variants={stagger}
           initial="hidden"
@@ -53,7 +53,7 @@ export default function FAQSection() {
             initial="hidden"
             whileInView="show"
             viewport={inViewOnce}
-            className="mx-auto mt-12 max-w-3xl space-y-3"
+            className="mx-auto mt-10 sm:mt-12 w-full max-w-3xl space-y-3"
           >
             {FAQ_ITEMS.map((item, index) => {
               const isOpen = openIndex === index;
@@ -78,9 +78,9 @@ export default function FAQSection() {
                         aria-expanded={isOpen}
                         aria-controls={panelId}
                         onClick={() => toggle(index)}
-                        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-white/60 dark:hover:bg-white/5 sm:px-6 sm:py-5"
+                        className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition-colors hover:bg-white/60 dark:hover:bg-white/5 sm:gap-4 sm:px-6 sm:py-5"
                       >
-                        <span className="text-base font-semibold leading-snug text-gray-900 sm:text-lg dark:text-gray-100">
+                        <span className="text-base font-semibold leading-snug text-gray-900 break-words min-w-0 sm:text-lg dark:text-gray-100">
                           {item.question}
                         </span>
                         <motion.span
@@ -121,8 +121,8 @@ export default function FAQSection() {
                           }}
                           className="overflow-hidden"
                         >
-                          <div className="border-t border-gray-200/70 px-5 pb-5 pt-4 dark:border-white/10 sm:px-6 sm:pb-6">
-                            <p className="text-base leading-7 text-gray-600 dark:text-gray-400">
+                          <div className="border-t border-gray-200/70 px-4 pb-5 pt-4 dark:border-white/10 sm:px-6 sm:pb-6">
+                            <p className="text-sm sm:text-base leading-7 text-gray-600 dark:text-gray-400 break-words">
                               {item.answer}
                             </p>
                           </div>

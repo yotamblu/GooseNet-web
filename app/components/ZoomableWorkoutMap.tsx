@@ -156,7 +156,7 @@ export default function ZoomableWorkoutMap({ coordinates, className = "h-96" }: 
       initial={reduce ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="relative"
+      className="relative w-full max-w-full min-w-0"
     >
       <div
         ref={mapContainerRef}

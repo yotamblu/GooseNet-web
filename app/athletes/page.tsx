@@ -168,7 +168,7 @@ export default function AthletesPage() {
     >
       {/* Search + counter */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="w-full sm:max-w-md">
+        <div className="w-full min-w-0 sm:max-w-md">
           <Input
             type="search"
             placeholder="Search athletes…"

@@ -158,7 +158,7 @@ export default function FlocksPage() {
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 w-full max-w-full">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} padding="none" className="overflow-hidden">
               <Skeleton h={80} className="rounded-none" />
@@ -195,7 +195,7 @@ export default function FlocksPage() {
           variants={staggerTight}
           initial="hidden"
           animate="show"
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 w-full max-w-full"
         >
           {flocksArray.map((flock, index) => {
             const gradient = gradients[index % gradients.length];

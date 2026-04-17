@@ -456,8 +456,8 @@ function SleepDataPageContent() {
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
     >
       <Card variant="glass" padding="md" interactive>
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          <div className="shrink-0 self-center">
+        <div className="flex w-full min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
+          <div className="flex w-full max-w-full shrink-0 justify-center overflow-hidden sm:w-auto sm:self-center">
             <SleepPieChart
               deepSleepSeconds={item.deepSleepDurationInSeconds}
               lightSleepSeconds={item.lightSleepDurationInSeconds}
@@ -466,13 +466,13 @@ function SleepDataPageContent() {
             />
           </div>
 
-          <div className="flex-1 space-y-3">
+          <div className="min-w-0 flex-1 space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600 dark:text-blue-400">
                   {index === 0 ? "Most recent" : "Night"}
                 </div>
-                <h3 className="display-heading text-lg font-semibold text-gray-900 dark:text-gray-50">
+                <h3 className="display-heading break-words text-base font-semibold text-gray-900 dark:text-gray-50 sm:text-lg">
                   {formatDateLong(item.sleepDate)}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -516,7 +516,7 @@ function SleepDataPageContent() {
       variants={stagger}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-2 gap-3 md:grid-cols-4"
+      className="grid grid-cols-2 gap-3 sm:grid-cols-4"
     >
       <motion.div variants={fadeUp}>
         <StatTile
@@ -593,16 +593,18 @@ function SleepDataPageContent() {
       </CardHeader>
 
       <div className="relative grid gap-6 lg:grid-cols-[auto_1fr] lg:items-center">
-        <div className="flex justify-center lg:justify-start">
-          <SleepPieChart
-            deepSleepSeconds={featured.deepSleepDurationInSeconds}
-            lightSleepSeconds={featured.lightSleepDurationInSeconds}
-            remSleepSeconds={featured.remSleepInSeconds}
-            awakeSeconds={featured.awakeDurationInSeconds}
-          />
+        <div className="flex min-w-0 justify-center lg:justify-start">
+          <div className="w-full max-w-full overflow-hidden">
+            <SleepPieChart
+              deepSleepSeconds={featured.deepSleepDurationInSeconds}
+              lightSleepSeconds={featured.lightSleepDurationInSeconds}
+              remSleepSeconds={featured.remSleepInSeconds}
+              awakeSeconds={featured.awakeDurationInSeconds}
+            />
+          </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <SectionHeading
             as="h3"
             title="Stage breakdown"
@@ -628,7 +630,7 @@ function SleepDataPageContent() {
           <CardDescription>Total sleep per night</CardDescription>
         </div>
       </CardHeader>
-      <div className="flex items-stretch gap-3">
+      <div className="flex w-full min-w-0 max-w-full items-stretch gap-1.5 sm:gap-3">
         {trend.recent.map((item, i) => {
           const heightPct = Math.max(
             2,
@@ -637,7 +639,7 @@ function SleepDataPageContent() {
           return (
             <div
               key={item.summaryID || item.sleepDate}
-              className="flex flex-1 flex-col items-center gap-2"
+              className="flex min-w-0 flex-1 flex-col items-center gap-2"
             >
               {/* Bar area: owns its own fixed height so % heights resolve reliably. */}
               <div className="relative flex h-40 w-full items-end">
@@ -653,11 +655,11 @@ function SleepDataPageContent() {
                           ease: [0.22, 1, 0.36, 1],
                         }
                   }
-                  className="w-full min-h-[4px] rounded-t-lg bg-gradient-to-t from-blue-500/80 via-indigo-500/70 to-purple-500/70 shadow-glow-brand"
+                  className="min-h-[4px] w-full rounded-t-lg bg-gradient-to-t from-blue-500/80 via-indigo-500/70 to-purple-500/70 shadow-glow-brand"
                   title={`${formatTime(item.sleepDurationInSeconds)} on ${item.sleepDate}`}
                 />
               </div>
-              <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">
+              <div className="w-full truncate text-center text-[10px] font-medium text-gray-500 dark:text-gray-400">
                 {formatDateShort(item.sleepDate)}
               </div>
             </div>
@@ -692,22 +694,26 @@ function SleepDataPageContent() {
       }
     >
       {/* Mode + (conditional) date picker */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Tabs
-          variant="pills"
-          size="sm"
-          items={[
-            { value: "feed", label: "Feed" },
-            { value: "date", label: "By date" },
-          ]}
-          value={viewMode}
-          onChange={(v) => (v === "feed" ? switchToFeedMode() : switchToDateMode())}
-          ariaLabel="Sleep view mode"
-        />
+      <div className="mb-6 flex w-full min-w-0 max-w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:overflow-visible sm:px-0">
+          <div className="w-max sm:w-auto">
+            <Tabs
+              variant="pills"
+              size="sm"
+              items={[
+                { value: "feed", label: "Feed" },
+                { value: "date", label: "By date" },
+              ]}
+              value={viewMode}
+              onChange={(v) => (v === "feed" ? switchToFeedMode() : switchToDateMode())}
+              ariaLabel="Sleep view mode"
+            />
+          </div>
+        </div>
 
         {viewMode === "date" && (
-          <div className="flex items-center gap-2">
-            <label htmlFor="sleep-date" className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+          <div className="flex min-w-0 items-center gap-2">
+            <label htmlFor="sleep-date" className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
               Date
             </label>
             <input
@@ -715,7 +721,7 @@ function SleepDataPageContent() {
               type="date"
               value={selectedDate}
               onChange={handleDateChange}
-              className="h-10 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-white/10 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-400/30"
+              className="h-10 w-full min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-white/10 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:border-blue-400 dark:focus:ring-blue-400/30 sm:w-auto sm:flex-none"
             />
           </div>
         )}
@@ -731,7 +737,7 @@ function SleepDataPageContent() {
       {/* Loading state */}
       {((loading && viewMode === "feed") || (loadingDate && viewMode === "date")) && (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} h={108} className="rounded-2xl" />
             ))}

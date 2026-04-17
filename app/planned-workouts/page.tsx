@@ -541,7 +541,7 @@ function PlannedWorkoutsPageContent() {
         </p>
       )}
       {laps.length > 0 && (
-        <div className="mb-2">
+        <div className="mb-2 w-full max-w-full overflow-hidden">
           <LapBarChart laps={laps} className="border-0 shadow-none p-0" />
         </div>
       )}
@@ -651,22 +651,24 @@ function PlannedWorkoutsPageContent() {
       }
     >
       {/* View mode + filter */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Tabs
-          variant="pills"
-          size="sm"
-          items={[
-            { value: "feed", label: "Feed" },
-            { value: "date", label: "By Date" },
-          ]}
-          value={viewMode}
-          onChange={(v) => {
-            setViewMode(v as "feed" | "date");
-            setRunningWorkouts([]);
-            setStrengthWorkouts([]);
-          }}
-        />
-        <div className="ml-auto">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="min-w-0 -mx-1 overflow-x-auto scrollbar-thin px-1">
+          <Tabs
+            variant="pills"
+            size="sm"
+            items={[
+              { value: "feed", label: "Feed" },
+              { value: "date", label: "By Date" },
+            ]}
+            value={viewMode}
+            onChange={(v) => {
+              setViewMode(v as "feed" | "date");
+              setRunningWorkouts([]);
+              setStrengthWorkouts([]);
+            }}
+          />
+        </div>
+        <div className="min-w-0 -mx-1 overflow-x-auto scrollbar-thin px-1 sm:ml-auto">
           <Tabs
             variant="underline"
             size="sm"
@@ -680,8 +682,8 @@ function PlannedWorkoutsPageContent() {
       {/* Date picker for date mode */}
       {viewMode === "date" && (
         <Card padding="md" className="mb-6">
-          <form onSubmit={handleDateSubmit} className="flex flex-col sm:flex-row gap-4 items-end">
-            <div className="flex-1 w-full">
+          <form onSubmit={handleDateSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
+            <div className="min-w-0 flex-1 w-full">
               <Input
                 type="date"
                 label="Select Date"
@@ -700,6 +702,7 @@ function PlannedWorkoutsPageContent() {
               variant="primary"
               disabled={loading || !selectedDate}
               loading={loading}
+              className="w-full sm:w-auto"
             >
               Fetch Workouts
             </Button>

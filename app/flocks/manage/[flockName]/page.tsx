@@ -409,7 +409,7 @@ export default function FlockManagementPage() {
             aria-hidden
             className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full bg-gradient-to-br from-blue-500/30 via-purple-500/20 to-teal-400/20 blur-3xl"
           />
-          <div className="relative">
+          <div className="relative shrink-0">
             <span
               aria-hidden
               className="absolute inset-0 -m-1.5 rounded-full bg-gradient-to-tr from-blue-500/70 via-purple-500/60 to-teal-400/60 blur-md"
@@ -425,22 +425,34 @@ export default function FlockManagementPage() {
             <div className="text-xs font-semibold uppercase tracking-[0.14em] text-blue-600 dark:text-blue-300">
               Flock
             </div>
-            <h1 className="mt-1 text-3xl sm:text-4xl lg:text-5xl display-heading font-bold tracking-tight text-gradient-brand break-words">
+            <h1 className="mt-1 text-2xl sm:text-4xl lg:text-5xl display-heading font-bold tracking-tight text-gradient-brand break-words">
               {decodedFlockName}
             </h1>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Badge variant="brand" dot>
                 {memberCount} {memberCount === 1 ? "member" : "members"}
               </Badge>
-              <Badge variant="neutral">Coached by {user?.userName ?? "you"}</Badge>
+              <Badge variant="neutral" className="min-w-0 break-words">
+                Coached by {user?.userName ?? "you"}
+              </Badge>
             </div>
           </div>
 
-          <div className="relative flex flex-wrap items-center gap-2">
-            <Link href={`/workouts/new?flock=${encodeURIComponent(decodedFlockName)}`}>
-              <Button variant="secondary">Add workout</Button>
+          <div className="relative flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+            <Link
+              href={`/workouts/new?flock=${encodeURIComponent(decodedFlockName)}`}
+              className="block w-full sm:w-auto"
+            >
+              <Button variant="secondary" className="w-full sm:w-auto">
+                Add workout
+              </Button>
             </Link>
-            <Button variant="gradient" iconLeft={IconPlus} onClick={() => setShowAddModal(true)}>
+            <Button
+              variant="gradient"
+              iconLeft={IconPlus}
+              onClick={() => setShowAddModal(true)}
+              className="w-full sm:w-auto"
+            >
               Add to Flock
             </Button>
           </div>
@@ -457,23 +469,25 @@ export default function FlockManagementPage() {
       )}
 
       {/* KPI */}
-      <div className="mt-6 grid grid-cols-2 gap-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4">
         <StatTile label="Members" value={memberCount} accent="brand" compact />
         <StatTile label="Available" value={availableCount} accent="teal" compact />
       </div>
 
       {/* Tabs */}
       <div className="mt-8">
-        <Tabs<ManageTab>
-          items={[
-            { value: "members", label: "Members", icon: IconUsers },
-            { value: "settings", label: "Settings", icon: IconSettings },
-          ]}
-          value={activeTab}
-          onChange={(v) => setActiveTab(v)}
-          variant="underline"
-          ariaLabel="Flock sections"
-        />
+        <div className="-mx-4 overflow-x-auto scrollbar-thin px-4 sm:mx-0 sm:px-0">
+          <Tabs<ManageTab>
+            items={[
+              { value: "members", label: "Members", icon: IconUsers },
+              { value: "settings", label: "Settings", icon: IconSettings },
+            ]}
+            value={activeTab}
+            onChange={(v) => setActiveTab(v)}
+            variant="underline"
+            ariaLabel="Flock sections"
+          />
+        </div>
 
         <div className="mt-6">
           {/* MEMBERS */}
@@ -598,20 +612,20 @@ export default function FlockManagementPage() {
                   <CardTitle>Flock details</CardTitle>
                 </div>
                 <dl className="mt-4 divide-y divide-gray-200 text-sm dark:divide-white/10">
-                  <div className="flex items-center justify-between py-2.5">
-                    <dt className="text-gray-500 dark:text-gray-400">Name</dt>
-                    <dd className="font-medium text-gray-900 dark:text-gray-100">
+                  <div className="flex items-center justify-between gap-3 py-2.5">
+                    <dt className="shrink-0 text-gray-500 dark:text-gray-400">Name</dt>
+                    <dd className="min-w-0 break-words text-right font-medium text-gray-900 dark:text-gray-100">
                       {decodedFlockName}
                     </dd>
                   </div>
-                  <div className="flex items-center justify-between py-2.5">
-                    <dt className="text-gray-500 dark:text-gray-400">Owner</dt>
-                    <dd className="font-medium text-gray-900 dark:text-gray-100">
+                  <div className="flex items-center justify-between gap-3 py-2.5">
+                    <dt className="shrink-0 text-gray-500 dark:text-gray-400">Owner</dt>
+                    <dd className="min-w-0 break-words text-right font-medium text-gray-900 dark:text-gray-100">
                       {user?.userName ?? "—"}
                     </dd>
                   </div>
-                  <div className="flex items-center justify-between py-2.5">
-                    <dt className="text-gray-500 dark:text-gray-400">Members</dt>
+                  <div className="flex items-center justify-between gap-3 py-2.5">
+                    <dt className="shrink-0 text-gray-500 dark:text-gray-400">Members</dt>
                     <dd className="font-medium text-gray-900 dark:text-gray-100">
                       {memberCount}
                     </dd>

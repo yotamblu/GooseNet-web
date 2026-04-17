@@ -109,7 +109,7 @@ function GoogleSuccessContent() {
   return (
     <div className="relative min-h-screen flex flex-col bg-white dark:bg-gray-950 overflow-hidden">
       <header className="relative z-40 sticky top-0 bg-white/70 dark:bg-gray-950/70 backdrop-blur-xl border-b border-gray-200/60 dark:border-white/10">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
+        <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-4 lg:px-8">
           <Link href="/" className="flex items-center gap-2">
             <Image
               src="/logo/goosenet_logo.png"
@@ -127,7 +127,7 @@ function GoogleSuccessContent() {
         </nav>
       </header>
 
-      <main className="relative flex-1 flex items-center justify-center px-6 py-12 bg-aurora">
+      <main className="relative flex-1 flex items-center justify-center px-4 sm:px-6 py-12 bg-aurora overflow-hidden">
         {/* Confetti particles — only on success */}
         {showCelebrate && !reduce && (
           <div

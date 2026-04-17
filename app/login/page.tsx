@@ -114,17 +114,17 @@ function LoginPageContent() {
         </nav>
       </header>
 
-      <div className="relative flex-1 grid md:grid-cols-2">
+      <div className="relative flex-1 grid md:grid-cols-2 min-w-0">
         <BrandPanel />
 
         {/* Form side */}
-        <main className="relative flex flex-col">
+        <main className="relative flex flex-col min-w-0">
           {/* Desktop top bar */}
           <div className="hidden md:flex items-center justify-end px-8 pt-6">
             <ThemeToggle />
           </div>
 
-          <div className="relative flex-1 flex items-center justify-center px-6 py-10 md:py-16">
+          <div className="relative flex-1 flex items-center justify-center px-4 sm:px-6 py-10 md:py-16">
             <motion.div
               variants={fadeUp}
               initial="hidden"
@@ -132,7 +132,7 @@ function LoginPageContent() {
               className="w-full max-w-md"
             >
               <div className="mb-8 text-center md:text-left">
-                <h1 className="display-heading text-3xl md:text-4xl text-gray-900 dark:text-gray-50">
+                <h1 className="display-heading text-2xl sm:text-3xl md:text-4xl text-gray-900 dark:text-gray-50">
                   Welcome{" "}
                   <span className="text-gradient-brand">back</span>
                 </h1>

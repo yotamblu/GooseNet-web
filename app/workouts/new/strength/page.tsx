@@ -374,8 +374,8 @@ function StrengthWorkoutFormPageContent() {
 
         {/* Sticky save bar */}
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200/60 dark:border-white/10 bg-white/80 dark:bg-[#0b0f17]/85 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 py-3">
-            <div className="min-w-0 flex items-center gap-3">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 py-3">
+            <div className="min-w-0 flex-1 flex items-center gap-3">
               <AnimatePresence>
                 {showSuccess && (
                   <motion.div
@@ -407,15 +407,17 @@ function StrengthWorkoutFormPageContent() {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <Link href="/workouts/new">
-                <Button variant="ghost" type="button">
+            <div className="flex items-center gap-2 shrink-0">
+              <Link href="/workouts/new" className="shrink-0">
+                <Button variant="ghost" type="button" size="sm" className="sm:h-10 sm:text-sm sm:px-4">
                   Cancel
                 </Button>
               </Link>
               <Button
                 type="submit"
                 variant="gradient"
+                size="sm"
+                className="sm:h-10 sm:text-sm sm:px-4 shrink-0"
                 disabled={isSubmitting || showSuccess}
                 loading={isSubmitting}
               >

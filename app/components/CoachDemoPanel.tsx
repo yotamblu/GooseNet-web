@@ -76,7 +76,7 @@ export default function CoachDemoPanel() {
 
   return (
     <div
-      className="glass-surface relative overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10"
+      className="glass-surface relative w-full max-w-full min-w-0 mx-auto overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10"
       style={{ minHeight: 540 }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}

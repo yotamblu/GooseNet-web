@@ -181,7 +181,7 @@ function StrengthWorkoutDetailPageContent() {
           <Card padding="lg" className="space-y-4">
             <Skeleton h={28} w="60%" />
             <Skeleton h={14} w="30%" />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            <div className="grid grid-cols-3 gap-3 pt-2 sm:gap-4">
               <Skeleton h={96} />
               <Skeleton h={96} />
               <Skeleton h={96} />
@@ -271,7 +271,7 @@ function StrengthWorkoutDetailPageContent() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
           <StatTile label="Drills" value={totals.drills} accent="purple" />
           <StatTile label="Total Sets" value={totals.sets} accent="brand" />
           <StatTile label="Total Reps" value={totals.reps} accent="teal" />
@@ -287,17 +287,17 @@ function StrengthWorkoutDetailPageContent() {
             initial={reduce ? undefined : "hidden"}
             whileInView={reduce ? undefined : "show"}
             viewport={inViewOnce}
-            className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
           >
             {workoutData.workoutDrills.map((drill, idx) => (
               <motion.div key={idx} variants={reduce ? undefined : fadeUp}>
-                <Card padding="md" interactive>
+                <Card padding="md" interactive className="min-w-0">
                   <div className="flex items-start gap-3">
                     <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-fuchsia-500/20 text-purple-600 dark:text-purple-300 font-semibold">
                       {idx + 1}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
+                      <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 break-words">
                         {drill.drillName}
                       </h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -309,7 +309,7 @@ function StrengthWorkoutDetailPageContent() {
                   </div>
 
                   {/* Per-set grid — visual completion tracker (display-only, no logic changes) */}
-                  <div className="mt-4 flex flex-wrap gap-1.5">
+                  <div className="mt-4 flex flex-wrap gap-1.5 min-w-0">
                     {Array.from({ length: Math.min(drill.drillSets, 20) }).map((_, setIdx) => (
                       <span
                         key={setIdx}
@@ -360,13 +360,13 @@ function StrengthWorkoutDetailPageContent() {
             {reviewEntries.length > 0 ? (
               reviewEntries.map(([athleteName, review]) => (
                 <Card key={athleteName} padding="md">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">{athleteName}</h3>
+                  <div className="flex flex-col gap-2 mb-2 sm:flex-row sm:items-center sm:justify-between">
+                    <h3 className="min-w-0 font-semibold text-gray-900 dark:text-gray-100 break-words">{athleteName}</h3>
                     <Badge variant="outline" size="sm">
                       Difficulty: {review.difficultyLevel}/10
                     </Badge>
                   </div>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{review.reviewContent}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">{review.reviewContent}</p>
                 </Card>
               ))
             ) : (
@@ -384,9 +384,9 @@ function StrengthWorkoutDetailPageContent() {
           <div>
             {hasExistingReview && !isEditingReview ? (
               <Card padding="md">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col gap-3 mb-3 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="font-semibold text-gray-900 dark:text-gray-100">Your Review</h3>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <Badge variant="outline" size="sm">
                       Difficulty: {difficultyLevel}/10
                     </Badge>
@@ -395,7 +395,7 @@ function StrengthWorkoutDetailPageContent() {
                     </Button>
                   </div>
                 </div>
-                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{reviewContent}</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">{reviewContent}</p>
               </Card>
             ) : (
               <Card padding="md" className="space-y-5">
@@ -433,12 +433,13 @@ function StrengthWorkoutDetailPageContent() {
                   placeholder="Share your thoughts about this workout..."
                 />
 
-                <div className="flex items-center justify-end gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
                   {hasExistingReview && (
                     <Button
                       variant="ghost"
                       onClick={() => setIsEditingReview(false)}
                       disabled={isSubmittingReview}
+                      className="w-full sm:w-auto"
                     >
                       Cancel
                     </Button>
@@ -448,6 +449,7 @@ function StrengthWorkoutDetailPageContent() {
                     onClick={handleSubmitReview}
                     disabled={isSubmittingReview || !reviewContent.trim()}
                     loading={isSubmittingReview}
+                    className="w-full sm:w-auto"
                   >
                     {hasExistingReview ? "Save changes" : "Submit Review"}
                   </Button>

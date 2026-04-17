@@ -17,9 +17,9 @@ export default function FinalCTA() {
   return (
     <section
       id="cta"
-      className="relative overflow-hidden bg-white py-24 sm:py-28 lg:py-32 dark:bg-gray-900"
+      className="relative w-full max-w-full overflow-hidden bg-white py-16 sm:py-24 lg:py-32 dark:bg-gray-900"
     >
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl w-full min-w-0 px-4 sm:px-6 lg:px-8">
         <motion.div
           variants={stagger}
           initial="hidden"
@@ -32,7 +32,7 @@ export default function FinalCTA() {
             aria-hidden
             className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-600 via-purple-600 to-teal-400 p-[1.5px] opacity-90"
           />
-          <div className="bg-aurora relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 px-6 py-16 shadow-2xl ring-1 ring-white/10 sm:px-12 sm:py-20 lg:px-16 lg:py-24">
+          <div className="bg-aurora relative w-full max-w-full overflow-hidden rounded-3xl bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 px-5 py-12 shadow-2xl ring-1 ring-white/10 sm:px-12 sm:py-20 lg:px-16 lg:py-24">
             {/* Subtle dot grid */}
             <div
               aria-hidden
@@ -73,7 +73,7 @@ export default function FinalCTA() {
 
               <motion.h2
                 variants={fadeUp}
-                className="display-heading mt-4 text-4xl text-white sm:text-5xl lg:text-6xl"
+                className="display-heading mt-4 text-3xl text-white sm:text-4xl md:text-5xl lg:text-6xl break-words"
               >
                 Stop guessing. Start{" "}
                 <span className="text-gradient-brand animate-gradient bg-[length:200%_100%]">
@@ -91,7 +91,7 @@ export default function FinalCTA() {
 
               <motion.div
                 variants={fadeUp}
-                className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-6"
+                className="mt-8 sm:mt-10 flex w-full max-w-md mx-auto flex-col items-stretch justify-center gap-3 sm:max-w-none sm:flex-row sm:items-center sm:gap-6"
               >
                 <motion.div
                   whileHover={reduce ? undefined : { scale: 1.03 }}
@@ -101,10 +101,11 @@ export default function FinalCTA() {
                     stiffness: 400,
                     damping: 28,
                   }}
+                  className="w-full sm:w-auto"
                 >
                   <Link
                     href="/signup"
-                    className="shadow-glow-brand animate-gradient inline-flex items-center justify-center rounded-xl bg-[linear-gradient(120deg,#3b82f6_0%,#6366f1_35%,#a855f7_70%,#3b82f6_100%)] bg-[length:200%_100%] px-8 py-4 text-base font-semibold text-white transition-[filter] hover:brightness-110 sm:px-10 sm:py-5 sm:text-lg"
+                    className="shadow-glow-brand animate-gradient inline-flex w-full sm:w-auto items-center justify-center rounded-xl bg-[linear-gradient(120deg,#3b82f6_0%,#6366f1_35%,#a855f7_70%,#3b82f6_100%)] bg-[length:200%_100%] px-6 py-3.5 text-base font-semibold text-white transition-[filter] hover:brightness-110 sm:px-10 sm:py-5 sm:text-lg"
                   >
                     Get started with GooseNet
                     <svg

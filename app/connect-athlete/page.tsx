@@ -333,7 +333,7 @@ export default function ConnectAthletePage() {
                     aria-hidden
                     className="pointer-events-none absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-teal-400/5"
                   />
-                  <code className="relative block text-base sm:text-xl font-mono font-bold tracking-wider text-gray-900 dark:text-gray-100 break-all sm:break-normal overflow-x-auto">
+                  <code className="relative block w-full text-xs sm:text-base md:text-xl font-mono font-bold tracking-wider text-gray-900 dark:text-gray-100 break-all">
                     {coachCode || "Loading..."}
                   </code>
                 </div>

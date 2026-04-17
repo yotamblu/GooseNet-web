@@ -23,7 +23,7 @@ const PADDING: Record<CardPadding, string> = {
   lg: "p-8",
 };
 
-const BASE = "relative rounded-2xl transition-[transform,box-shadow,background-color] duration-300";
+const BASE = "relative w-full max-w-full min-w-0 rounded-2xl transition-[transform,box-shadow,background-color] duration-300";
 
 const VARIANTS: Record<CardVariant, string> = {
   default:

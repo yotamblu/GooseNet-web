@@ -91,7 +91,7 @@ export default function ForAthletes() {
   return (
     <section
       id="for-athletes"
-      className="relative overflow-hidden bg-gray-50 py-24 sm:py-28 lg:py-32 dark:bg-gray-950"
+      className="relative w-full max-w-full overflow-hidden bg-gray-50 py-16 sm:py-24 lg:py-32 dark:bg-gray-950"
     >
       <div
         aria-hidden
@@ -102,7 +102,7 @@ export default function ForAthletes() {
         className="pointer-events-none absolute -right-32 top-1/4 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl"
       />
 
-      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+      <div className="relative mx-auto max-w-7xl w-full min-w-0 px-4 sm:px-6 lg:px-8">
         <motion.div
           variants={stagger}
           initial="hidden"
@@ -164,7 +164,7 @@ export default function ForAthletes() {
 
 function AthleteDashboardMock() {
   return (
-    <div className="glass-surface relative overflow-hidden rounded-2xl p-5 shadow-2xl sm:p-6">
+    <div className="glass-surface relative w-full max-w-full min-w-0 overflow-hidden rounded-2xl p-4 shadow-2xl sm:p-6">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
