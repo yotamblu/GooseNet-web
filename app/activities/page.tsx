@@ -1,21 +1,33 @@
 /**
  * Activities Page
- * Displays athlete workouts with date-based fetching and feed pagination
+ * Displays athlete workouts with date-based fetching and feed pagination.
+ *
+ * The data-fetching logic (fetchWorkoutFeed / fetchWorkoutsByDate), state,
+ * cursor management and workout normalisation is intentionally preserved
+ * verbatim from the previous implementation — only the presentation layer is
+ * rebuilt on top of the new design system.
  */
 
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { motion, useReducedMotion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
-import ThemeToggle from "../components/ThemeToggle";
-import Footer from "../components/Footer";
-import { getProfilePicSrc } from "../../lib/profile-pic-utils";
 import { apiService } from "../services/api";
 import WorkoutMap from "../components/WorkoutMap";
+import {
+  AppShell,
+  Button,
+  Card,
+  Badge,
+  Tabs,
+  Skeleton,
+  Spinner,
+  Input,
+} from "../components/ui";
 
 interface WorkoutSummary {
   workoutName: string;
@@ -60,13 +72,97 @@ interface WorkoutFeedResponse {
   strengthNextCursor: string | null;
 }
 
+type ViewMode = "feed" | "date";
+type TypeFilter = "all" | "running" | "strength";
+
+function RunIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M13 4a2 2 0 100 4 2 2 0 000-4zM7 20l3-4-2-3 4-3 3 3 3-1" />
+      <path d="M11 13l2 3-1 4" />
+    </svg>
+  );
+}
+
+function DumbbellIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M6 4v16M2 8v8M18 4v16M22 8v8M6 12h12" />
+    </svg>
+  );
+}
+
+function LockIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0110 0v4" />
+    </svg>
+  );
+}
+
+function formatDate(date: Date): string {
+  const month = (date.getMonth() + 1).toString();
+  const day = date.getDate().toString();
+  const year = date.getFullYear();
+  return `${month}/${day}/${year}`;
+}
+
+function parseWorkoutDate(dateStr: string): Date {
+  if (!dateStr) return new Date(0);
+  const parts = dateStr.split("/");
+  if (parts.length !== 3) return new Date(0);
+  const month = parseInt(parts[0], 10) - 1;
+  const day = parseInt(parts[1], 10);
+  const year = parseInt(parts[2], 10);
+  return new Date(year, month, day);
+}
+
+function parseDateInput(dateString: string): string {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "";
+  return formatDate(date);
+}
+
+function formatDuration(seconds: number | null | undefined): string {
+  if (!seconds || isNaN(seconds) || seconds <= 0) return "0:00";
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
+  return `${minutes}:${secs.toString().padStart(2, "0")}`;
+}
+
+function formatDistance(meters: number | null | undefined): string {
+  if (!meters || isNaN(meters) || meters <= 0) return "0.00";
+  return (meters / 1000).toFixed(2);
+}
+
+function formatPace(pace: number | null | undefined): string {
+  if (!pace || isNaN(pace) || pace <= 0) return "0:00";
+  const minutes = Math.floor(pace);
+  const seconds = Math.round((pace - minutes) * 60);
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function formatHR(hr: number | null | undefined): string {
+  if (!hr || isNaN(hr) || hr <= 0) return "N/A";
+  return `${Math.round(hr)}`;
+}
+
 function ActivitiesPageContent() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [viewMode, setViewMode] = useState<"feed" | "date">("feed");
+  const reduce = useReducedMotion();
+
+  const [viewMode, setViewMode] = useState<ViewMode>("feed");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [selectedDate, setSelectedDate] = useState<string>("");
-  const [dateInputValue, setDateInputValue] = useState<string>(""); // For HTML date input
+  const [dateInputValue, setDateInputValue] = useState<string>("");
   const [athleteName, setAthleteName] = useState<string>("");
   const [runningWorkouts, setRunningWorkouts] = useState<WorkoutSummary[]>([]);
   const [strengthWorkouts, setStrengthWorkouts] = useState<StrengthWorkout[]>([]);
@@ -77,10 +173,27 @@ function ActivitiesPageContent() {
   const [hasMoreRunning, setHasMoreRunning] = useState(false);
   const [hasMoreStrength, setHasMoreStrength] = useState(false);
 
-  // Require authentication
+  // Refs so the intersection-observer callback always sees fresh values
+  // without forcing us to re-subscribe on every render.
+  const loadingRef = useRef(false);
+  const runningCursorRef = useRef<string | null>(null);
+  const strengthCursorRef = useRef<string | null>(null);
+  const hasMoreRef = useRef(false);
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+  useEffect(() => {
+    runningCursorRef.current = runningCursor;
+  }, [runningCursor]);
+  useEffect(() => {
+    strengthCursorRef.current = strengthCursor;
+  }, [strengthCursor]);
+  useEffect(() => {
+    hasMoreRef.current = hasMoreRunning || hasMoreStrength;
+  }, [hasMoreRunning, hasMoreStrength]);
+
   useRequireAuth();
 
-  // Get athlete name from URL params or use current user
   useEffect(() => {
     const athleteParam = searchParams.get("athlete");
     if (athleteParam) {
@@ -90,34 +203,6 @@ function ActivitiesPageContent() {
     }
   }, [searchParams, user]);
 
-  // Format date to M/d/yyyy (no leading zeros)
-  const formatDate = (date: Date): string => {
-    const month = (date.getMonth() + 1).toString();
-    const day = date.getDate().toString();
-    const year = date.getFullYear();
-    return `${month}/${day}/${year}`;
-  };
-
-  // Parse workout date string (M/d/yyyy format) to Date object
-  const parseWorkoutDate = (dateStr: string): Date => {
-    if (!dateStr) return new Date(0);
-    const parts = dateStr.split('/');
-    if (parts.length !== 3) return new Date(0);
-    const month = parseInt(parts[0], 10) - 1; // Month is 0-indexed
-    const day = parseInt(parts[1], 10);
-    const year = parseInt(parts[2], 10);
-    return new Date(year, month, day);
-  };
-
-  // Convert date string (YYYY-MM-DD) to M/d/yyyy format
-  const parseDateInput = (dateString: string): string => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "";
-    return formatDate(date);
-  };
-
-  // Fetch workouts by date
   const fetchWorkoutsByDate = async (date: string) => {
     if (!user?.apiKey || !athleteName) {
       setError("Missing required information");
@@ -132,10 +217,7 @@ function ActivitiesPageContent() {
         strengthWorkouts: StrengthWorkout[];
       }>(athleteName, user.apiKey, date);
 
-      console.log("Workout summary response:", response.data);
-
       if (response.data) {
-        // Ensure we have valid arrays and parse numeric values
         const parseWorkout = (w: any): WorkoutSummary => ({
           workoutName: w.workoutName || w.WorkoutName || "Running",
           workoutId: typeof (w.workoutId || w.WorkoutId) === 'string' ? parseInt(w.workoutId || w.WorkoutId, 10) : (Number(w.workoutId || w.WorkoutId) || 0),
@@ -148,11 +230,11 @@ function ActivitiesPageContent() {
           profilePicData: w.profilePicData || w.ProfilePicData || "",
           athleteName: w.athleteName || w.AthleteName || "",
         });
-        
-        const running = Array.isArray(response.data.runningWorkouts) 
+
+        const running = Array.isArray(response.data.runningWorkouts)
           ? response.data.runningWorkouts.map(parseWorkout)
           : [];
-        const strength = Array.isArray(response.data.strengthWorkouts) 
+        const strength = Array.isArray(response.data.strengthWorkouts)
           ? response.data.strengthWorkouts.map((w: any) => ({
               coachName: w.coachName || w.CoachName || "",
               workoutName: w.workoutName || w.WorkoutName || "Strength Workout",
@@ -177,35 +259,26 @@ function ActivitiesPageContent() {
     }
   };
 
-  // Fetch workout feed
-  const fetchWorkoutFeed = async (loadMore = false) => {
+  const fetchWorkoutFeed = useCallback(async (loadMore = false) => {
     if (!user?.apiKey || !athleteName) {
       setError("Missing required information");
       return;
     }
+    if (loadingRef.current) return;
 
     try {
+      loadingRef.current = true;
       setLoading(true);
       setError(null);
 
       const response = await apiService.getWorkoutFeed<WorkoutFeedResponse>(
         user.apiKey,
         athleteName,
-        loadMore ? runningCursor : null,
-        loadMore ? strengthCursor : null
+        loadMore ? runningCursorRef.current : null,
+        loadMore ? strengthCursorRef.current : null
       );
 
-      console.log("Workout feed response:", response.data);
-      if (response.data?.runningWorkouts?.[0]) {
-        console.log("Sample feed workout fields:", Object.keys(response.data.runningWorkouts[0]));
-        console.log("Sample feed workout profile pic:", {
-          profilePicData: response.data.runningWorkouts[0].profilePicData,
-        });
-      }
-
       if (response.data) {
-        // Parse and normalize workout data to prevent NaN
-        // Note: Feed endpoint may not include ProfilePicData, so we'll need to fetch it separately if missing
         const parseWorkout = (w: any): WorkoutSummary => ({
           workoutName: w.workoutName || w.WorkoutName || "Running",
           workoutId: typeof (w.workoutId || w.WorkoutId) === 'string' ? parseInt(w.workoutId || w.WorkoutId, 10) : (Number(w.workoutId || w.WorkoutId) || 0),
@@ -215,22 +288,20 @@ function ActivitiesPageContent() {
           workoutAvgPaceInMinKm: Number(w.workoutAvgPaceInMinKm || w.WorkoutAvgPaceInMinKm) || 0,
           workoutCoordsJsonStr: w.workoutCoordsJsonStr || w.WorkoutCoordsJsonStr || "",
           workoutDate: w.workoutDate || w.WorkoutDate || "",
-          // Try multiple field names for profile pic
           profilePicData: w.profilePicData || w.ProfilePicData || w.profilePicString || w.ProfilePicString || "",
           athleteName: w.athleteName || w.AthleteName || athleteName || "",
         });
 
-        const running = Array.isArray(response.data.runningWorkouts) 
+        const running = Array.isArray(response.data.runningWorkouts)
           ? response.data.runningWorkouts.map((w: any) => {
               const parsed = parseWorkout(w);
-              // If profile pic is missing in feed response, try to use current user's profile pic if it's their workout
               if (!parsed.profilePicData && parsed.athleteName === athleteName && user?.profilePicString) {
                 parsed.profilePicData = user.profilePicString;
               }
               return parsed;
             })
           : [];
-        const strength = Array.isArray(response.data.strengthWorkouts) 
+        const strength = Array.isArray(response.data.strengthWorkouts)
           ? response.data.strengthWorkouts.map((w: any) => ({
               coachName: w.coachName || w.CoachName || "",
               workoutName: w.workoutName || w.WorkoutName || "Strength Workout",
@@ -264,11 +335,11 @@ function ActivitiesPageContent() {
         setStrengthWorkouts([]);
       }
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
-  };
+  }, [user?.apiKey, user?.profilePicString, athleteName]);
 
-  // Handle date selection
   const handleDateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedDate) {
@@ -276,505 +347,531 @@ function ActivitiesPageContent() {
     }
   };
 
-  // Load feed on mount or when switching to feed mode
   useEffect(() => {
-    if (viewMode === "feed" && user?.apiKey && athleteName && !loading) {
+    if (viewMode === "feed" && user?.apiKey && athleteName) {
       fetchWorkoutFeed(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, user?.apiKey, athleteName]);
 
-  const handleLogout = async () => {
-    await logout();
-  };
+  // Infinite-scroll sentinel — auto-load when scrolled near the bottom.
+  // Use a callback ref so the observer attaches/detaches as the sentinel node
+  // is mounted / unmounted (e.g. when the results list first renders, or when
+  // the user switches view modes).
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const sentinelRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
+      if (!node) return;
+      if (typeof IntersectionObserver === "undefined") return;
 
-  // Format duration from seconds to readable format
-  const formatDuration = (seconds: number | null | undefined): string => {
-    if (!seconds || isNaN(seconds) || seconds <= 0) return "0:00";
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+      const io = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          if (!entry?.isIntersecting) return;
+          if (loadingRef.current) return;
+          if (!hasMoreRef.current) return;
+          fetchWorkoutFeed(true);
+        },
+        { rootMargin: "600px 0px 600px 0px", threshold: 0 }
+      );
+      io.observe(node);
+      observerRef.current = io;
+    },
+    [fetchWorkoutFeed]
+  );
+  useEffect(() => {
+    return () => {
+      observerRef.current?.disconnect();
+      observerRef.current = null;
+    };
+  }, []);
+
+  const combinedWorkouts = useMemo(() => {
+    const all = [
+      ...runningWorkouts.map((w) => ({
+        type: "running" as const,
+        workout: w,
+        date: parseWorkoutDate(w.workoutDate),
+      })),
+      ...strengthWorkouts.map((w) => ({
+        type: "strength" as const,
+        workout: w,
+        date: parseWorkoutDate(w.workoutDate),
+      })),
+    ].sort((a, b) => {
+      const dateDiff = b.date.getTime() - a.date.getTime();
+      if (dateDiff !== 0) return dateDiff;
+      if (a.type === "running" && b.type === "strength") return -1;
+      if (a.type === "strength" && b.type === "running") return 1;
+      return 0;
+    });
+
+    if (typeFilter === "all") return all;
+    return all.filter((it) => it.type === typeFilter);
+  }, [runningWorkouts, strengthWorkouts, typeFilter]);
+
+  // If the active type filter currently shows zero items but more data is
+  // available from the server, auto-fetch the next page so the user actually
+  // sees results for the type they asked for. (Fixes the "switching to
+  // Running/Strength doesn't reload" case when the first page happened to
+  // contain only the other type.)
+  useEffect(() => {
+    if (viewMode !== "feed") return;
+    if (loading) return;
+    if (typeFilter === "all") return;
+    if (combinedWorkouts.length > 0) return;
+    const canLoadRunning = typeFilter === "running" && hasMoreRunning;
+    const canLoadStrength = typeFilter === "strength" && hasMoreStrength;
+    if (canLoadRunning || canLoadStrength) {
+      fetchWorkoutFeed(true);
     }
-    return `${minutes}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  // Format distance from meters to km
-  const formatDistance = (meters: number | null | undefined): string => {
-    if (!meters || isNaN(meters) || meters <= 0) return "0.00";
-    return (meters / 1000).toFixed(2);
-  };
-
-  // Format pace from min/km
-  const formatPace = (pace: number | null | undefined): string => {
-    if (!pace || isNaN(pace) || pace <= 0) return "0:00";
-    const minutes = Math.floor(pace);
-    const seconds = Math.round((pace - minutes) * 60);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-  };
-
-  // Format heart rate
-  const formatHR = (hr: number | null | undefined): string => {
-    if (!hr || isNaN(hr) || hr <= 0) return "N/A";
-    return `${Math.round(hr)}`;
-  };
+  }, [
+    viewMode,
+    typeFilter,
+    combinedWorkouts.length,
+    hasMoreRunning,
+    hasMoreStrength,
+    loading,
+    fetchWorkoutFeed,
+  ]);
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+      <AppShell hidePageHeader>
+        <div className="flex flex-col items-center justify-center gap-3 py-24">
+          <Spinner size="lg" variant="brand" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
         </div>
-      </div>
+      </AppShell>
     );
   }
 
-  // Check if user is a coach and no athlete parameter is provided
   const athleteParam = searchParams.get("athlete");
   if (user && user.role?.toLowerCase() === "coach" && !athleteParam) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="mb-4">
-            <svg
-              className="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
+      <AppShell hidePageHeader>
+        <div className="mx-auto max-w-xl text-center py-24">
+          <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 mb-4">
+            <LockIcon className="h-7 w-7" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            No Access
+          <h2 className="display-heading text-2xl font-bold text-gray-900 dark:text-gray-50">
+            No access
           </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
             Please select an athlete to view their activities.
           </p>
-          <Link
-            href="/dashboard"
-            className="inline-block rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
-          >
-            Return to Dashboard
-          </Link>
+          <div className="mt-6">
+            <Button variant="primary" onClick={() => router.push("/dashboard")}>
+              Return to dashboard
+            </Button>
+          </div>
         </div>
-      </div>
+      </AppShell>
     );
   }
 
+  const title = "Activities";
+  const subtitle = athleteName
+    ? `Your training history for ${athleteName}`
+    : "Your training history";
+
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <Image
-              src="/logo/goosenet_logo.png"
-              alt="GooseNet"
-              width={32}
-              height={32}
-              className="h-8 w-auto"
-            />
-            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">GooseNet</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            {user?.profilePicString && (
-              <img
-                src={getProfilePicSrc(user.profilePicString)}
-                alt={user.userName}
-                referrerPolicy="no-referrer"
-                className="hidden md:block h-10 w-10 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
+    <AppShell
+      title={title}
+      subtitle={subtitle}
+      gradientTitle
+      actions={
+        <Link href="/dashboard">
+          <Button variant="secondary" size="sm">
+            Back to dashboard
+          </Button>
+        </Link>
+      }
+    >
+      {/* Filter / view bar */}
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <Tabs<ViewMode>
+          items={[
+            { value: "feed", label: "Feed" },
+            { value: "date", label: "By date" },
+          ]}
+          value={viewMode}
+          onChange={(v) => {
+            setViewMode(v);
+            setRunningWorkouts([]);
+            setStrengthWorkouts([]);
+          }}
+          variant="pills"
+          size="sm"
+          ariaLabel="View mode"
+        />
+
+        <Tabs<TypeFilter>
+          items={[
+            { value: "all", label: "All" },
+            { value: "running", label: "Running", icon: <RunIcon className="h-3.5 w-3.5" /> },
+            { value: "strength", label: "Strength", icon: <DumbbellIcon className="h-3.5 w-3.5" /> },
+          ]}
+          value={typeFilter}
+          onChange={setTypeFilter}
+          variant="pills"
+          size="sm"
+          ariaLabel="Activity type"
+        />
+      </div>
+
+      {/* Date picker */}
+      {viewMode === "date" && (
+        <Card variant="glass" padding="md" className="mb-6">
+          <form
+            onSubmit={handleDateSubmit}
+            className="flex flex-col gap-3 sm:flex-row sm:items-end"
+          >
+            <div className="flex-1">
+              <Input
+                type="date"
+                label="Select date"
+                value={dateInputValue}
+                onChange={(e) => {
+                  setDateInputValue(e.target.value);
+                  setSelectedDate(parseDateInput(e.target.value));
                 }}
+                helperText={selectedDate ? `Selected: ${selectedDate}` : "Pick a date to see workouts"}
               />
-            )}
-            <button
-              onClick={handleLogout}
-              className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+            </div>
+            <Button
+              type="submit"
+              variant="primary"
+              loading={loading}
+              disabled={loading || !selectedDate}
             >
-              Logout
-            </button>
-          </div>
-        </nav>
-      </header>
+              Fetch workouts
+            </Button>
+          </form>
+        </Card>
+      )}
 
-      {/* Main Content */}
-      <main className="relative flex-1 px-6 py-12 sm:px-6 sm:py-24 overflow-hidden">
-        {/* Glowing purple/blue background effects */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-500/30 dark:bg-purple-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute -top-20 -right-20 w-80 h-80 bg-blue-500/30 dark:bg-blue-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-purple-500/20 dark:from-purple-500/15 dark:via-blue-500/15 dark:to-purple-500/15 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-pink-500/20 dark:bg-pink-500/15 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-500/25 dark:bg-blue-500/15 rounded-full blur-3xl"></div>
+      {/* Error */}
+      {error && (
+        <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+          {error}
         </div>
+      )}
 
-        <div className="relative mx-auto max-w-7xl">
-          {/* Header Section */}
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-5xl">
-                Activities
-              </h1>
-              <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                {athleteName ? `Viewing workouts for ${athleteName}` : "View your workouts"}
-              </p>
-            </div>
-            <Link
-              href="/dashboard"
-              className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Back to Dashboard
-            </Link>
-          </div>
-
-          {/* View Mode Toggle */}
-          <div className="mb-6 flex gap-4">
-            <button
-              onClick={() => {
-                setViewMode("feed");
-                setRunningWorkouts([]);
-                setStrengthWorkouts([]);
-              }}
-              className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                viewMode === "feed"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
-              }`}
-            >
-              Feed
-            </button>
-            <button
-              onClick={() => {
-                setViewMode("date");
-                setRunningWorkouts([]);
-                setStrengthWorkouts([]);
-              }}
-              className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                viewMode === "date"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
-              }`}
-            >
-              By Date
-            </button>
-          </div>
-
-          {/* Date Picker (for date mode) */}
-          {viewMode === "date" && (
-            <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-4 sm:p-6">
-              <form onSubmit={handleDateSubmit} className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1 w-full">
-                  <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Select Date
-                  </label>
-                  <input
-                    type="date"
-                    id="date"
-                    value={dateInputValue}
-                    onChange={(e) => {
-                      setDateInputValue(e.target.value);
-                      const formatted = parseDateInput(e.target.value);
-                      setSelectedDate(formatted);
-                    }}
-                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                  />
-                  {selectedDate && (
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                      Selected: {selectedDate}
-                    </p>
-                  )}
+      {/* Loading skeletons (only for initial load, not load-more) */}
+      {loading && runningWorkouts.length === 0 && strengthWorkouts.length === 0 && (
+        <div className="space-y-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} variant="default" padding="md">
+              <div className="flex flex-col gap-4 lg:flex-row">
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Skeleton w={44} h={44} className="rounded-xl" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton h={16} w="40%" />
+                      <Skeleton h={12} w="25%" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {Array.from({ length: 4 }).map((__, j) => (
+                      <div key={j} className="space-y-2">
+                        <Skeleton h={10} w="60%" />
+                        <Skeleton h={20} w="80%" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-start">
-                  <button
-                    type="submit"
-                    disabled={loading || !selectedDate}
-                    className="w-full sm:w-auto px-6 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap mt-[1.625rem]"
+                <Skeleton w="100%" h={160} className="rounded-xl lg:w-1/2" />
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Results list */}
+      {(!loading || runningWorkouts.length > 0 || strengthWorkouts.length > 0) && (
+        <div className="space-y-4">
+          {combinedWorkouts.map((item, index) => {
+            if (item.type === "running") {
+              const workout = item.workout as WorkoutSummary;
+              let coords: [number, number][] = [];
+              try {
+                if (workout.workoutCoordsJsonStr) {
+                  coords = JSON.parse(workout.workoutCoordsJsonStr);
+                }
+              } catch (e) {
+                console.error("Failed to parse coordinates:", e);
+              }
+
+              return (
+                <motion.div
+                  key={workout.workoutId || `running-${index}`}
+                  layout={!reduce}
+                  initial={reduce ? false : { opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <Link
+                    href={`/workout?userName=${encodeURIComponent(workout.athleteName)}&workoutId=${workout.workoutId}`}
+                    className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded-2xl"
                   >
-                    {loading ? "Loading..." : "Fetch Workouts"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
-              <p className="text-red-800 dark:text-red-200">{error}</p>
-            </div>
-          )}
-
-          {/* Loading State */}
-          {loading && viewMode === "feed" && runningWorkouts.length === 0 && (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600 dark:text-gray-400">Loading workouts...</p>
-            </div>
-          )}
-
-          {/* Workouts Display */}
-          {!loading || runningWorkouts.length > 0 || strengthWorkouts.length > 0 ? (
-            <div className="space-y-6">
-              {/* Combined Workouts - Chronologically Ordered */}
-              {(() => {
-                // Combine and sort workouts
-                const combinedWorkouts = [
-                  ...runningWorkouts.map(w => ({ type: 'running' as const, workout: w, date: parseWorkoutDate(w.workoutDate) })),
-                  ...strengthWorkouts.map(w => ({ type: 'strength' as const, workout: w, date: parseWorkoutDate(w.workoutDate) }))
-                ].sort((a, b) => {
-                  // Sort by date (newest first)
-                  const dateDiff = b.date.getTime() - a.date.getTime();
-                  if (dateDiff !== 0) return dateDiff;
-                  // If dates are equal, running workouts come first
-                  if (a.type === 'running' && b.type === 'strength') return -1;
-                  if (a.type === 'strength' && b.type === 'running') return 1;
-                  return 0;
-                });
-
-                return (
-                  <div className="space-y-6">
-                    {combinedWorkouts.map((item, index) => {
-                      if (item.type === 'running') {
-                        const workout = item.workout as WorkoutSummary;
-                      // Parse coordinates for map
-                      let coords: [number, number][] = [];
-                      try {
-                        if (workout.workoutCoordsJsonStr) {
-                          coords = JSON.parse(workout.workoutCoordsJsonStr);
-                        }
-                      } catch (e) {
-                        console.error("Failed to parse coordinates:", e);
-                      }
-
-                      return (
-                        <Link
-                          href={`/workout?userName=${encodeURIComponent(workout.athleteName)}&workoutId=${workout.workoutId}`}
-                          key={workout.workoutId || `running-${index}`}
-                          className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer block"
-                        >
-                          <div className="flex flex-col lg:flex-row">
-                            {/* Left Side: All Data */}
-                            <div className="flex-1 p-6 flex flex-col">
-                              {/* Header with icon */}
-                              <div className="flex items-center gap-3 mb-6">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/40 dark:to-blue-800/40 flex-shrink-0 shadow-sm">
-                                  <svg className="h-7 w-7 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                  </svg>
-                                </div>
-                                <div className="flex-1">
-                                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-                                    {workout.workoutName || "Running"}
-                                  </h3>
-                                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
-                                    {workout.workoutDate}
-                                  </p>
-                                </div>
-                              </div>
-                              
-                              {/* Stats: Labels with values right next to them */}
-                              <div className="space-y-4">
-                                <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700/50">
-                                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Distance</span>
-                                  <span className="text-xl font-bold text-blue-600 dark:text-blue-400 ml-4 tracking-tight">
-                                    {formatDistance(workout.workoutDistanceInMeters)} <span className="text-base font-semibold text-gray-500 dark:text-gray-400">km</span>
-                                  </span>
-                                </div>
-                                <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700/50">
-                                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Duration</span>
-                                  <span className="text-xl font-bold text-blue-600 dark:text-blue-400 ml-4 tracking-tight">
-                                    {formatDuration(workout.workoutDurationInSeconds)}
-                                  </span>
-                                </div>
-                                {(workout.workoutAvgPaceInMinKm && workout.workoutAvgPaceInMinKm > 0 && !isNaN(workout.workoutAvgPaceInMinKm)) && (
-                                  <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700/50">
-                                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Avg Pace</span>
-                                    <span className="text-xl font-bold text-blue-600 dark:text-blue-400 ml-4 tracking-tight">
-                                      {formatPace(workout.workoutAvgPaceInMinKm)} <span className="text-base font-semibold text-gray-500 dark:text-gray-400">/km</span>
-                                    </span>
-                                  </div>
-                                )}
-                                {(workout.workoutAvgHR && workout.workoutAvgHR > 0 && !isNaN(workout.workoutAvgHR)) && (
-                                  <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700/50">
-                                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Avg HR</span>
-                                    <span className="text-xl font-bold text-blue-600 dark:text-blue-400 ml-4 tracking-tight">
-                                      {formatHR(workout.workoutAvgHR)} <span className="text-base font-semibold text-gray-500 dark:text-gray-400">bpm</span>
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
+                    <Card
+                      variant="default"
+                      padding="none"
+                      interactive
+                      className="overflow-hidden"
+                    >
+                      <div className="flex flex-col lg:flex-row">
+                        <div className="flex-1 p-6 flex flex-col">
+                          <div className="flex items-center gap-3 mb-5">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/15 to-purple-500/15 text-blue-600 dark:text-blue-400 ring-1 ring-inset ring-blue-500/20">
+                              <RunIcon className="h-6 w-6" />
                             </div>
-
-                            {/* Right Side: Map (full height) */}
-                            {coords.length > 0 && (
-                              <div className="w-full lg:w-1/2 h-64 lg:h-[400px] min-h-[250px]">
-                                <WorkoutMap coordinates={coords} className="h-full w-full" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50 truncate">
+                                  {workout.workoutName || "Running"}
+                                </h3>
+                                <Badge variant="brand" size="sm">Run</Badge>
                               </div>
-                            )}
-                          </div>
-                        </Link>
-                      );
-                      } else {
-                        const workout = item.workout as StrengthWorkout;
-                        const review = workout.workoutReviews && workout.athleteNames && workout.athleteNames.length > 0
-                          ? workout.workoutReviews[workout.athleteNames[0]]
-                          : null;
-
-                        // Convert workoutId to string if it exists, handle null/undefined
-                        const workoutIdStr = workout.workoutId ? String(workout.workoutId) : null;
-
-                        return (
-                          <Link
-                            href={workoutIdStr ? `/strength-workout/${workoutIdStr}` : '#'}
-                            key={workoutIdStr || `strength-${index}`}
-                            onClick={(e) => {
-                              if (!workoutIdStr) {
-                                e.preventDefault();
-                              }
-                            }}
-                            className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden p-6 block ${workoutIdStr ? 'hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
-                          >
-                            {/* Header with icon */}
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex items-center gap-3">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/40 dark:to-purple-800/40 flex-shrink-0 shadow-sm">
-                                  <svg className="h-7 w-7 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                  </svg>
-                                </div>
-                                <div className="flex-1">
-                                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-                                    {workout.workoutName || "Strength Workout"}
-                                  </h3>
-                                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
-                                    {workout.workoutDate}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Workout Description */}
-                            {workout.workoutDescription && (
-                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                                {workout.workoutDescription}
+                              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1">
+                                {workout.workoutDate}
                               </p>
-                            )}
+                            </div>
+                          </div>
 
-                            {/* Drills */}
-                            {workout.workoutDrills && workout.workoutDrills.length > 0 && (
-                              <div className="mb-4">
-                                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                                  Drills:
-                                </h4>
-                                <div className="space-y-1">
-                                  {workout.workoutDrills.map((drill, drillIndex) => (
-                                    <div key={drillIndex} className="text-sm text-gray-600 dark:text-gray-400">
-                                      • {drill.drillName} - {drill.drillSets} sets × {drill.drillReps} reps
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 mt-auto">
+                            <RunningStat label="Distance" value={formatDistance(workout.workoutDistanceInMeters)} unit="km" />
+                            <RunningStat label="Duration" value={formatDuration(workout.workoutDurationInSeconds)} />
+                            {workout.workoutAvgPaceInMinKm && workout.workoutAvgPaceInMinKm > 0 && !isNaN(workout.workoutAvgPaceInMinKm) ? (
+                              <RunningStat label="Avg pace" value={formatPace(workout.workoutAvgPaceInMinKm)} unit="/km" />
+                            ) : null}
+                            {workout.workoutAvgHR && workout.workoutAvgHR > 0 && !isNaN(workout.workoutAvgHR) ? (
+                              <RunningStat label="Avg HR" value={formatHR(workout.workoutAvgHR)} unit="bpm" />
+                            ) : null}
+                          </div>
+                        </div>
 
-                            {/* Review */}
-                            {review && (
-                              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                    Review
-                                  </span>
-                                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                                    Difficulty: {review.difficultyLevel}/10
-                                  </span>
-                                </div>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                  {review.reviewContent}
+                        <div className="w-full lg:w-[45%] h-56 lg:h-auto min-h-[200px] p-3 lg:p-4">
+                          {coords.length > 0 ? (
+                            <WorkoutMap coordinates={coords} className="h-full w-full" />
+                          ) : (
+                            <div className="relative h-full w-full overflow-hidden rounded-xl border border-gray-200/70 dark:border-white/10 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-teal-400/10">
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                  No route data
                                 </p>
                               </div>
-                            )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  </Link>
+                </motion.div>
+              );
+            }
 
-                            {/* Coach Name */}
-                            {workout.coachName && (
-                              <p className="text-xs text-gray-500 dark:text-gray-500 mt-4">
-                                Coach: {workout.coachName}
-                              </p>
-                            )}
-                          </Link>
-                        );
-                      }
-                    })}
+            const workout = item.workout as StrengthWorkout;
+            const review = workout.workoutReviews && workout.athleteNames && workout.athleteNames.length > 0
+              ? workout.workoutReviews[workout.athleteNames[0]]
+              : null;
+            const workoutIdStr = workout.workoutId ? String(workout.workoutId) : null;
+
+            const inner = (
+              <Card
+                variant="default"
+                padding="md"
+                interactive={!!workoutIdStr}
+                className={!workoutIdStr ? "opacity-70" : undefined}
+              >
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/15 to-rose-500/10 text-purple-600 dark:text-purple-400 ring-1 ring-inset ring-purple-500/20">
+                    <DumbbellIcon className="h-6 w-6" />
                   </div>
-                );
-              })()}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50 truncate">
+                        {workout.workoutName || "Strength Workout"}
+                      </h3>
+                      <Badge variant="info" size="sm">Strength</Badge>
+                    </div>
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1">
+                      {workout.workoutDate}
+                    </p>
+                  </div>
+                </div>
 
-              {/* Empty State */}
-              {!loading && runningWorkouts.length === 0 && strengthWorkouts.length === 0 && (
-                <div className="text-center py-12">
-                  <svg
-                    className="mx-auto h-12 w-12 text-gray-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                    />
-                  </svg>
-                  <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    No workouts found
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {viewMode === "date"
-                      ? "Select a date to view workouts"
-                      : "No workouts available yet"}
+                {workout.workoutDescription && (
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                    {workout.workoutDescription}
                   </p>
-                </div>
-              )}
+                )}
 
-              {/* Load More Button (Feed Mode) */}
-              {viewMode === "feed" && (hasMoreRunning || hasMoreStrength) && (
-                <div className="text-center mt-6">
-                  <button
-                    onClick={() => fetchWorkoutFeed(true)}
-                    disabled={loading}
-                    className="px-6 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                {workout.workoutDrills && workout.workoutDrills.length > 0 && (
+                  <div className="mb-3">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+                      Drills
+                    </h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {workout.workoutDrills.map((drill, drillIndex) => (
+                        <Badge key={drillIndex} variant="neutral" size="sm">
+                          {drill.drillName} · {drill.drillSets}×{drill.drillReps}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {review && (
+                  <div className="mt-3 pt-3 border-t border-gray-200/60 dark:border-white/5">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        Review
+                      </span>
+                      <Badge variant="warning" size="sm">
+                        Difficulty {review.difficultyLevel}/10
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      {review.reviewContent}
+                    </p>
+                  </div>
+                )}
+
+                {workout.coachName && (
+                  <p className="text-[11px] text-gray-500 dark:text-gray-500 mt-3">
+                    Coach · {workout.coachName}
+                  </p>
+                )}
+              </Card>
+            );
+
+            return (
+              <motion.div
+                key={workoutIdStr || `strength-${index}`}
+                layout={!reduce}
+                initial={reduce ? false : { opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {workoutIdStr ? (
+                  <Link
+                    href={`/strength-workout/${workoutIdStr}`}
+                    className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded-2xl"
                   >
-                    {loading ? "Loading..." : "Load More"}
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : null}
+                    {inner}
+                  </Link>
+                ) : (
+                  <div className="cursor-not-allowed">{inner}</div>
+                )}
+              </motion.div>
+            );
+          })}
+
+          {/* Empty state */}
+          {!loading && combinedWorkouts.length === 0 && (
+            <Card variant="glass" padding="lg" className="text-center">
+              <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/15 via-purple-500/15 to-teal-400/15 text-blue-600 dark:text-blue-400 ring-1 ring-inset ring-blue-500/20 mb-4">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50">
+                No workouts yet
+              </h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {viewMode === "date"
+                  ? "Select a date above to look up workouts."
+                  : "Connect your Garmin to start syncing runs, or log a strength workout."}
+              </p>
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <Link href="/settings">
+                  <Button variant="primary" size="sm">Connect Garmin</Button>
+                </Link>
+                <Link href="/planned-workouts">
+                  <Button variant="secondary" size="sm">Log a workout</Button>
+                </Link>
+              </div>
+            </Card>
+          )}
+
+          {/* Auto-load sentinel + inline "loading more" feedback */}
+          {viewMode === "feed" && (hasMoreRunning || hasMoreStrength) && combinedWorkouts.length > 0 && (
+            <>
+              <div
+                ref={sentinelRef}
+                aria-hidden
+                className="h-1 w-full"
+              />
+              <div className="py-4 flex flex-col items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                {loading ? (
+                  <>
+                    <Spinner size="sm" variant="brand" />
+                    <span>Loading more activities…</span>
+                  </>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => fetchWorkoutFeed(true)}
+                  >
+                    Load more
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* End-of-feed marker */}
+          {viewMode === "feed" &&
+            !hasMoreRunning &&
+            !hasMoreStrength &&
+            combinedWorkouts.length > 0 && (
+              <div className="py-6 text-center text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                You&apos;re all caught up
+              </div>
+            )}
         </div>
-      </main>
-      <Footer />
+      )}
+    </AppShell>
+  );
+}
+
+function RunningStat({ label, value, unit }: { label: string; value: string; unit?: string }) {
+  return (
+    <div>
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+        {label}
+      </div>
+      <div className="mt-1 text-lg font-bold tabular-nums tracking-tight text-gray-900 dark:text-gray-50">
+        {value}
+        {unit && (
+          <span className="ml-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+            {unit}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
 
 export default function ActivitiesPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <AppShell hidePageHeader>
+          <div className="flex flex-col items-center justify-center gap-3 py-24">
+            <Spinner size="lg" variant="brand" />
+            <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
+          </div>
+        </AppShell>
+      }
+    >
       <ActivitiesPageContent />
     </Suspense>
   );

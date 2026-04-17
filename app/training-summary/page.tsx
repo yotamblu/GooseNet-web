@@ -5,17 +5,29 @@
 
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { motion, useReducedMotion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
-import ThemeToggle from "../components/ThemeToggle";
-import Footer from "../components/Footer";
-import { getProfilePicSrc } from "../../lib/profile-pic-utils";
 import { apiService } from "../services/api";
 import WorkoutMap from "../components/WorkoutMap";
+import {
+  AppShell,
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  Badge,
+  StatTile,
+  SectionHeading,
+  Spinner,
+  Skeleton,
+  fadeUp,
+  stagger,
+} from "../components/ui";
 
 interface WorkoutLap {
   lapDistanceInKilometers: number;
@@ -57,9 +69,9 @@ interface TrainingSummary {
 }
 
 function TrainingSummaryPageContent() {
-  const { user, loading: authLoading, logout } = useAuth();
-  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
+  const reduce = useReducedMotion();
   const [athleteName, setAthleteName] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
@@ -157,7 +169,7 @@ function TrainingSummaryPageContent() {
       // Validate that start date is before end date
       const startDateObj = new Date(startDate);
       const endDateObj = new Date(endDate);
-      
+
       if (startDateObj > endDateObj) {
         setError("Start date must be before end date");
         setLoading(false);
@@ -173,11 +185,51 @@ function TrainingSummaryPageContent() {
 
       setSummary(response.data);
 
-      // Save to sessionStorage
+      // Persist selected range + a *trimmed* copy of the summary.
+      // The raw API response contains per-workout time-series (dataSamples),
+      // GPS coordinate strings and laps arrays that can easily blow past
+      // sessionStorage's ~5MB quota for longer ranges. We drop those heavy
+      // fields for persistence and wrap the writes in their own try/catch so
+      // a quota error can never surface as a user-facing error banner.
       if (typeof window !== "undefined") {
-        sessionStorage.setItem(getStorageKey("startDate"), startDate);
-        sessionStorage.setItem(getStorageKey("endDate"), endDate);
-        sessionStorage.setItem(getStorageKey("summary"), JSON.stringify(response.data));
+        try {
+          sessionStorage.setItem(getStorageKey("startDate"), startDate);
+          sessionStorage.setItem(getStorageKey("endDate"), endDate);
+        } catch {
+          /* ignore — non-fatal */
+        }
+        if (response.data) {
+          const light: TrainingSummary = {
+            startDate: response.data.startDate,
+            endDate: response.data.endDate,
+            distanceInKilometers: response.data.distanceInKilometers,
+            averageDailyInKilometers: response.data.averageDailyInKilometers,
+            timeInSeconds: response.data.timeInSeconds,
+            averageDailyInSeconds: response.data.averageDailyInSeconds,
+            allWorkouts: (response.data.allWorkouts ?? []).map((w) => ({
+              ...w,
+              workoutLaps: [],
+              workoutCoordsJsonStr: "",
+              workoutMapCenterJsonStr: "",
+              userAccessToken: "",
+              dataSamples: [],
+            })),
+          };
+          try {
+            sessionStorage.setItem(
+              getStorageKey("summary"),
+              JSON.stringify(light)
+            );
+          } catch {
+            // Still too large (or storage disabled / full) — clear any stale
+            // entry so we don't hydrate a partial one next visit.
+            try {
+              sessionStorage.removeItem(getStorageKey("summary"));
+            } catch {
+              /* ignore */
+            }
+          }
+        }
       }
     } catch (err) {
       console.error("Failed to fetch training summary:", err);
@@ -191,17 +243,12 @@ function TrainingSummaryPageContent() {
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
-  };
-
-  // Format distance
+  // -- Formatters ---------------------------------------------------------
   const formatDistance = (meters: number): string => {
     const km = meters / 1000;
     return km.toFixed(2);
   };
 
-  // Format duration
   const formatDuration = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -212,7 +259,6 @@ function TrainingSummaryPageContent() {
     return `${minutes}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Format pace
   const formatPace = (paceInMinKm: number): string => {
     if (!paceInMinKm || isNaN(paceInMinKm) || paceInMinKm <= 0) return "N/A";
     const minutes = Math.floor(paceInMinKm);
@@ -220,360 +266,605 @@ function TrainingSummaryPageContent() {
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  // Format HR
   const formatHR = (hr: number): string => {
     if (!hr || isNaN(hr) || hr <= 0) return "N/A";
     return Math.round(hr).toString();
   };
 
+  // -- Quick-range presets (UI affordance only; calls existing handlers)
+  const applyPreset = (days: number) => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days + 1);
+    const iso = (d: Date) => {
+      const y = d.getFullYear();
+      const m = (d.getMonth() + 1).toString().padStart(2, "0");
+      const day = d.getDate().toString().padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    };
+    setStartDate(iso(start));
+    setEndDate(iso(end));
+    if (error && error.includes("date")) setError(null);
+  };
+
+  // -- Derived charts from allWorkouts -----------------------------------
+  const byDay = useMemo(() => {
+    if (!summary?.allWorkouts?.length) return [] as { date: string; km: number; label: string }[];
+    const map = new Map<string, number>();
+    for (const w of summary.allWorkouts) {
+      const key = w.workoutDate;
+      const prev = map.get(key) ?? 0;
+      map.set(key, prev + w.workoutDistanceInMeters / 1000);
+    }
+    const entries = Array.from(map.entries())
+      .map(([date, km]) => {
+        const parsed = new Date(date);
+        const label = isNaN(parsed.getTime())
+          ? date
+          : parsed.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        return { date, km, label };
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+    return entries;
+  }, [summary]);
+
+  const distByDayMax = byDay.reduce((m, d) => Math.max(m, d.km), 0) || 1;
+
+  const paceStats = useMemo(() => {
+    const pts = (summary?.allWorkouts ?? [])
+      .map((w) => w.workoutAvgPaceInMinKm)
+      .filter((p) => Number.isFinite(p) && p > 0);
+    if (pts.length === 0) return null;
+    const sorted = [...pts].sort((a, b) => a - b);
+    const avg = pts.reduce((s, x) => s + x, 0) / pts.length;
+    return { min: sorted[0], max: sorted[sorted.length - 1], avg };
+  }, [summary]);
+
+  const hrStats = useMemo(() => {
+    const pts = (summary?.allWorkouts ?? [])
+      .map((w) => w.workoutAvgHR)
+      .filter((p) => Number.isFinite(p) && p > 0);
+    if (pts.length === 0) return null;
+    const sorted = [...pts].sort((a, b) => a - b);
+    const avg = pts.reduce((s, x) => s + x, 0) / pts.length;
+    return { min: sorted[0], max: sorted[sorted.length - 1], avg };
+  }, [summary]);
+
+  // -- Guards -------------------------------------------------------------
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+      <AppShell hidePageHeader maxWidth="xl">
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <Spinner size="lg" variant="brand" />
         </div>
-      </div>
+      </AppShell>
     );
   }
 
-  // Show no access page if access is denied
   if (noAccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="mb-4">
-            <svg
-              className="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
+      <AppShell hidePageHeader maxWidth="md">
+        <Card variant="glass" padding="lg" className="mt-12 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-rose-500/10 text-rose-500">
+            <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+          <h2 className="display-heading text-2xl font-bold text-gray-900 dark:text-gray-50">
             No Access
           </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
             {user?.role?.toLowerCase() === "coach"
               ? "Please select an athlete to view their training summary."
               : "You do not have access to view this training summary."}
           </p>
-          <Link
-            href="/dashboard"
-            className="inline-block rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
-          >
-            Return to Dashboard
-          </Link>
-        </div>
-      </div>
+          <div className="mt-6">
+            <Link href="/dashboard">
+              <Button variant="primary">Return to Dashboard</Button>
+            </Link>
+          </div>
+        </Card>
+      </AppShell>
     );
   }
 
+  // -- Render -------------------------------------------------------------
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-4 lg:px-8">
-          <Link href="/dashboard" className="cursor-pointer flex items-center gap-2">
-            <Image
-              src="/logo/goosenet_logo.png"
-              alt="GooseNet"
-              width={32}
-              height={32}
-              className="h-8 w-auto"
-            />
-            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">GooseNet</span>
-          </Link>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <ThemeToggle />
-            {user?.profilePicString && (
-              <img
-                src={getProfilePicSrc(user.profilePicString)}
-                alt={user.userName}
-                referrerPolicy="no-referrer"
-                className="cursor-pointer hidden md:block h-10 w-10 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
-              />
-            )}
-            <button
-              onClick={handleLogout}
-              className="cursor-pointer rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Logout
-            </button>
-          </div>
-        </nav>
-      </header>
-
-      {/* Main Content */}
-      <main className="relative flex-1 px-4 sm:px-6 py-8 sm:py-12 lg:py-24 overflow-hidden">
-        {/* Glowing purple/blue background effects */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-500/30 dark:bg-purple-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute -top-20 -right-20 w-80 h-80 bg-blue-500/30 dark:bg-blue-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-purple-500/20 dark:from-purple-500/15 dark:via-blue-500/15 dark:to-purple-500/15 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-pink-500/20 dark:bg-pink-500/15 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-500/25 dark:bg-blue-500/15 rounded-full blur-3xl"></div>
+    <AppShell
+      title="Training Summary"
+      subtitle={
+        athleteName
+          ? user?.role?.toLowerCase() === "coach"
+            ? `Training insights for ${athleteName}`
+            : "Your training at a glance"
+          : "Training insights"
+      }
+      eyebrow="Performance"
+      gradientTitle
+      maxWidth="xl"
+    >
+      {/* Date selector card */}
+      <Card variant="glass" padding="lg" className="mb-8">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
+            Quick range
+          </span>
+          <button
+            type="button"
+            onClick={() => applyPreset(7)}
+            className="rounded-full border border-gray-200 bg-white/60 px-3 py-1 text-xs font-medium text-gray-700 transition hover:border-blue-500/50 hover:text-blue-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-blue-400"
+          >
+            Last 7 days
+          </button>
+          <button
+            type="button"
+            onClick={() => applyPreset(30)}
+            className="rounded-full border border-gray-200 bg-white/60 px-3 py-1 text-xs font-medium text-gray-700 transition hover:border-blue-500/50 hover:text-blue-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-blue-400"
+          >
+            Last 30 days
+          </button>
+          <button
+            type="button"
+            onClick={() => applyPreset(90)}
+            className="rounded-full border border-gray-200 bg-white/60 px-3 py-1 text-xs font-medium text-gray-700 transition hover:border-blue-500/50 hover:text-blue-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-blue-400"
+          >
+            Last 90 days
+          </button>
+          <button
+            type="button"
+            onClick={() => applyPreset(365)}
+            className="rounded-full border border-gray-200 bg-white/60 px-3 py-1 text-xs font-medium text-gray-700 transition hover:border-blue-500/50 hover:text-blue-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-blue-400"
+          >
+            Last year
+          </button>
         </div>
 
-        <div className="relative mx-auto max-w-7xl">
-          {/* Page Title */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-5xl">
-              Training Summary
-            </h1>
-            {athleteName && (
-              <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                {user?.role?.toLowerCase() === "coach" ? `Athlete: ${athleteName}` : "Your training statistics"}
-              </p>
-            )}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div>
+            <label htmlFor="startDate" className="mb-1.5 block text-sm font-medium text-gray-800 dark:text-gray-200">
+              Start date
+            </label>
+            <input
+              type="date"
+              id="startDate"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                if (error && error.includes("date")) setError(null);
+              }}
+              className={`h-10 w-full rounded-xl border bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:ring-2 dark:bg-gray-900/60 dark:text-gray-100 ${
+                startDate && endDate && !areDatesValid()
+                  ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/30"
+                  : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/30 dark:border-white/10 dark:focus:border-blue-400 dark:focus:ring-blue-400/30"
+              }`}
+            />
           </div>
-
-          {/* Date Input Form */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  id="startDate"
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    // Clear error when user changes dates
-                    if (error && error.includes("date")) {
-                      setError(null);
-                    }
-                  }}
-                  className={`w-full rounded-lg border ${
-                    startDate && endDate && !areDatesValid()
-                      ? "border-red-300 dark:border-red-600"
-                      : "border-gray-300 dark:border-gray-600"
-                  } bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500`}
-                />
-              </div>
-              <div>
-                <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  id="endDate"
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    // Clear error when user changes dates
-                    if (error && error.includes("date")) {
-                      setError(null);
-                    }
-                  }}
-                  className={`w-full rounded-lg border ${
-                    startDate && endDate && !areDatesValid()
-                      ? "border-red-300 dark:border-red-600"
-                      : "border-gray-300 dark:border-gray-600"
-                  } bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500`}
-                />
-              </div>
-              <div className="flex items-end">
-                <button
-                  onClick={fetchTrainingSummary}
-                  disabled={loading || !startDate || !endDate || !areDatesValid()}
-                  className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Loading..." : "Get Summary"}
-                </button>
-              </div>
-            </div>
-            {startDate && endDate && !areDatesValid() && (
-              <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50 rounded-lg">
-                <p className="text-sm text-red-800 dark:text-red-300">
-                  Start date must be before or equal to end date.
-                </p>
-              </div>
-            )}
-            {error && !error.includes("date") && (
-              <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50 rounded-lg">
-                <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
-              </div>
-            )}
+          <div>
+            <label htmlFor="endDate" className="mb-1.5 block text-sm font-medium text-gray-800 dark:text-gray-200">
+              End date
+            </label>
+            <input
+              type="date"
+              id="endDate"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                if (error && error.includes("date")) setError(null);
+              }}
+              className={`h-10 w-full rounded-xl border bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:ring-2 dark:bg-gray-900/60 dark:text-gray-100 ${
+                startDate && endDate && !areDatesValid()
+                  ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/30"
+                  : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/30 dark:border-white/10 dark:focus:border-blue-400 dark:focus:ring-blue-400/30"
+              }`}
+            />
           </div>
+          <div className="flex items-end">
+            <Button
+              variant="gradient"
+              fullWidth
+              loading={loading}
+              onClick={fetchTrainingSummary}
+              disabled={loading || !startDate || !endDate || !areDatesValid()}
+            >
+              {loading ? "Loading" : "Get summary"}
+            </Button>
+          </div>
+        </div>
 
-          {/* Summary Statistics */}
-          {summary && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6">
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                  Total Distance
-                </h3>
-                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  {summary.distanceInKilometers.toFixed(2)} <span className="text-lg text-gray-500 dark:text-gray-400">km</span>
-                </p>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6">
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                  Average Daily Distance
-                </h3>
-                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  {summary.averageDailyInKilometers.toFixed(2)} <span className="text-lg text-gray-500 dark:text-gray-400">km</span>
-                </p>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6">
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                  Total Time
-                </h3>
-                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  {formatDuration(summary.timeInSeconds)}
-                </p>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6">
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                  Average Daily Time
-                </h3>
-                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  {formatDuration(Math.round(summary.averageDailyInSeconds))}
-                </p>
-              </div>
-            </div>
-          )}
+        {startDate && endDate && !areDatesValid() && (
+          <div className="mt-4 rounded-lg border border-rose-300/60 bg-rose-50/70 p-3 text-sm text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300">
+            Start date must be before or equal to end date.
+          </div>
+        )}
+        {error && !error.includes("date") && (
+          <div className="mt-4 rounded-lg border border-rose-300/60 bg-rose-50/70 p-3 text-sm text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-300">
+            {error}
+          </div>
+        )}
+      </Card>
 
-          {/* Date Range Display */}
-          {summary && (
-            <div className="mb-6 text-center">
-              <p className="text-lg text-gray-600 dark:text-gray-400">
-                Period: <span className="font-semibold text-gray-900 dark:text-gray-100">{summary.startDate}</span> to{" "}
-                <span className="font-semibold text-gray-900 dark:text-gray-100">{summary.endDate}</span>
-              </p>
-            </div>
-          )}
+      {/* Loading skeleton */}
+      {loading && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} h={108} className="rounded-2xl" />
+            ))}
+          </div>
+          <Skeleton h={280} className="rounded-2xl" />
+          <Skeleton h={320} className="rounded-2xl" />
+        </div>
+      )}
 
-          {/* Workouts List */}
-          {summary && summary.allWorkouts && summary.allWorkouts.length > 0 && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-                Workouts ({summary.allWorkouts.length})
-              </h2>
-              {summary.allWorkouts.map((workout, index) => {
-                // Parse coordinates for map
-                let coords: [number, number][] = [];
-                try {
-                  if (workout.workoutCoordsJsonStr) {
-                    coords = JSON.parse(workout.workoutCoordsJsonStr);
-                  }
-                } catch (e) {
-                  console.error("Failed to parse coordinates:", e);
+      {/* Hero stats */}
+      {!loading && summary && (
+        <>
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            animate="show"
+            className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4"
+          >
+            <motion.div variants={fadeUp}>
+              <StatTile
+                label="Total distance"
+                value={Math.round(summary.distanceInKilometers * 100) / 100}
+                unit="km"
+                accent="brand"
+                decimals={2}
+              />
+            </motion.div>
+            <motion.div variants={fadeUp}>
+              <StatTile
+                label="Avg daily distance"
+                value={
+                  Math.round(summary.averageDailyInKilometers * 100) / 100
                 }
+                unit="km"
+                accent="teal"
+                decimals={2}
+              />
+            </motion.div>
+            <motion.div variants={fadeUp}>
+              <StatTile
+                label="Total time"
+                value={formatDuration(summary.timeInSeconds)}
+                accent="purple"
+              />
+            </motion.div>
+            <motion.div variants={fadeUp}>
+              <StatTile
+                label="Avg daily time"
+                value={formatDuration(Math.round(summary.averageDailyInSeconds))}
+                accent="amber"
+              />
+            </motion.div>
+          </motion.div>
 
-                return (
-                  <Link
-                    href={`/workout?userName=${encodeURIComponent(athleteName)}&workoutId=${workout.workoutId}`}
-                    key={workout.workoutId || `workout-${index}`}
-                    className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden hover:shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer block"
-                  >
-                    <div className="flex flex-col lg:flex-row">
-                      {/* Left Side: All Data */}
-                      <div className="flex-1 p-6 flex flex-col">
-                        {/* Header with icon */}
-                        <div className="flex items-center gap-3 mb-6">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/40 dark:to-blue-800/40 flex-shrink-0 shadow-sm">
-                            <svg className="h-7 w-7 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-                              {workout.wokroutName || "Running"}
-                            </h3>
-                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
-                              {workout.workoutDate}
-                            </p>
-                          </div>
+          {/* Period */}
+          <div className="mb-8 flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <Badge variant="brand" dot>
+              {summary.startDate} → {summary.endDate}
+            </Badge>
+            <Badge variant="neutral">
+              {summary.allWorkouts?.length ?? 0} workouts
+            </Badge>
+          </div>
+
+          {/* Charts row */}
+          <div className="mb-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+            {/* Distance by day */}
+            <Card variant="glass" padding="lg">
+              <CardHeader>
+                <div>
+                  <CardTitle>Distance by day</CardTitle>
+                  <CardDescription>
+                    Kilometres per day across the selected range
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              {byDay.length > 0 ? (
+                <div className="flex items-stretch gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                  {byDay.map((d, i) => {
+                    const h = d.km > 0 ? Math.max(2, (d.km / distByDayMax) * 100) : 0;
+                    return (
+                      <div
+                        key={d.date}
+                        className="flex min-w-[28px] flex-1 flex-col items-center gap-2"
+                      >
+                        {/* Bar area: owns its own fixed height so % heights
+                            resolve reliably (items-stretch won't help here
+                            because we may overflow horizontally). */}
+                        <div className="relative flex h-44 w-full items-end">
+                          <motion.div
+                            initial={reduce ? false : { height: 0, opacity: 0 }}
+                            animate={{ height: `${h}%`, opacity: 1 }}
+                            transition={
+                              reduce
+                                ? { duration: 0 }
+                                : {
+                                    duration: 0.7,
+                                    delay: Math.min(0.5, 0.015 * i),
+                                    ease: [0.22, 1, 0.36, 1],
+                                  }
+                            }
+                            className="w-full rounded-t-md bg-gradient-to-t from-blue-500/80 via-indigo-500/70 to-purple-500/70"
+                            title={`${d.km.toFixed(2)} km — ${d.label}`}
+                          />
                         </div>
-
-                        {/* Stats */}
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700/50">
-                            <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Distance</span>
-                            <span className="text-xl font-bold text-blue-600 dark:text-blue-400 ml-4 tracking-tight">
-                              {formatDistance(workout.workoutDistanceInMeters)} <span className="text-base font-semibold text-gray-500 dark:text-gray-400">km</span>
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700/50">
-                            <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Duration</span>
-                            <span className="text-xl font-bold text-blue-600 dark:text-blue-400 ml-4 tracking-tight">
-                              {formatDuration(workout.workoutDurationInSeconds)}
-                            </span>
-                          </div>
-                          {(workout.workoutAvgPaceInMinKm && workout.workoutAvgPaceInMinKm > 0 && !isNaN(workout.workoutAvgPaceInMinKm)) && (
-                            <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700/50">
-                              <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Avg Pace</span>
-                              <span className="text-xl font-bold text-blue-600 dark:text-blue-400 ml-4 tracking-tight">
-                                {formatPace(workout.workoutAvgPaceInMinKm)} <span className="text-base font-semibold text-gray-500 dark:text-gray-400">/km</span>
-                              </span>
-                            </div>
-                          )}
-                          {(workout.workoutAvgHR && workout.workoutAvgHR > 0 && !isNaN(workout.workoutAvgHR)) && (
-                            <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700/50">
-                              <span className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Avg HR</span>
-                              <span className="text-xl font-bold text-blue-600 dark:text-blue-400 ml-4 tracking-tight">
-                                {formatHR(workout.workoutAvgHR)} <span className="text-base font-semibold text-gray-500 dark:text-gray-400">bpm</span>
-                              </span>
-                            </div>
-                          )}
+                        <div className="truncate text-[10px] font-medium text-gray-500 dark:text-gray-400">
+                          {d.label}
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No distance data.
+                </p>
+              )}
+            </Card>
 
-                      {/* Right Side: Map (full height) */}
-                      {coords.length > 0 && (
-                        <div className="w-full lg:w-1/2 h-64 lg:h-[400px] min-h-[250px]">
-                          <WorkoutMap coordinates={coords} className="h-full w-full" />
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
+            {/* Pace / HR distribution */}
+            <Card variant="default" padding="lg">
+              <CardHeader>
+                <div>
+                  <CardTitle>Pace &amp; heart rate</CardTitle>
+                  <CardDescription>Across workouts in range</CardDescription>
+                </div>
+              </CardHeader>
+              <div className="space-y-4">
+                <RangeRow
+                  label="Avg pace"
+                  colorClass="from-blue-500 to-indigo-500"
+                  minLabel={paceStats ? formatPace(paceStats.min) : "—"}
+                  maxLabel={paceStats ? formatPace(paceStats.max) : "—"}
+                  avgLabel={paceStats ? formatPace(paceStats.avg) : "—"}
+                  lo={paceStats?.min ?? 0}
+                  hi={paceStats?.max ?? 1}
+                  value={paceStats?.avg ?? 0}
+                  unit="/km"
+                />
+                <RangeRow
+                  label="Avg HR"
+                  colorClass="from-rose-500 to-amber-500"
+                  minLabel={hrStats ? formatHR(hrStats.min) : "—"}
+                  maxLabel={hrStats ? formatHR(hrStats.max) : "—"}
+                  avgLabel={hrStats ? formatHR(hrStats.avg) : "—"}
+                  lo={hrStats?.min ?? 0}
+                  hi={hrStats?.max ?? 1}
+                  value={hrStats?.avg ?? 0}
+                  unit="bpm"
+                />
+              </div>
+            </Card>
+          </div>
+
+          {/* Workouts */}
+          {summary.allWorkouts && summary.allWorkouts.length > 0 ? (
+            <div>
+              <SectionHeading
+                as="h2"
+                title={`Workouts (${summary.allWorkouts.length})`}
+                description="Each session with its map and headline stats."
+              />
+
+              <div className="grid gap-6">
+                {summary.allWorkouts.map((workout, index) => {
+                  let coords: [number, number][] = [];
+                  try {
+                    if (workout.workoutCoordsJsonStr) {
+                      coords = JSON.parse(workout.workoutCoordsJsonStr);
+                    }
+                  } catch (e) {
+                    console.error("Failed to parse coordinates:", e);
+                  }
+
+                  return (
+                    <motion.div
+                      key={workout.workoutId || `workout-${index}`}
+                      layout={!reduce}
+                      initial={reduce ? false : { opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <Link
+                        href={`/workout?userName=${encodeURIComponent(athleteName)}&workoutId=${workout.workoutId}`}
+                        className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 rounded-2xl"
+                      >
+                        <Card variant="glass" padding="none" interactive className="overflow-hidden">
+                          <div className="flex flex-col lg:flex-row">
+                            <div className="flex flex-1 flex-col p-6">
+                              <div className="mb-5 flex items-center gap-3">
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 shadow-sm">
+                                  <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                  </svg>
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <h3 className="display-heading truncate text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-50">
+                                    {workout.wokroutName || "Running"}
+                                  </h3>
+                                  <p className="mt-0.5 text-xs font-medium uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+                                    {workout.workoutDate}
+                                  </p>
+                                </div>
+                                {workout.workoutDeviceName && (
+                                  <Badge variant="outline" size="sm">
+                                    {workout.workoutDeviceName}
+                                  </Badge>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                <StatPill
+                                  label="Distance"
+                                  value={formatDistance(workout.workoutDistanceInMeters)}
+                                  unit="km"
+                                />
+                                <StatPill
+                                  label="Duration"
+                                  value={formatDuration(workout.workoutDurationInSeconds)}
+                                />
+                                {workout.workoutAvgPaceInMinKm > 0 &&
+                                  !isNaN(workout.workoutAvgPaceInMinKm) && (
+                                    <StatPill
+                                      label="Avg pace"
+                                      value={formatPace(workout.workoutAvgPaceInMinKm)}
+                                      unit="/km"
+                                    />
+                                  )}
+                                {workout.workoutAvgHR > 0 &&
+                                  !isNaN(workout.workoutAvgHR) && (
+                                    <StatPill
+                                      label="Avg HR"
+                                      value={formatHR(workout.workoutAvgHR)}
+                                      unit="bpm"
+                                    />
+                                  )}
+                              </div>
+                            </div>
+
+                            {coords.length > 0 && (
+                              <div className="relative h-64 w-full overflow-hidden border-t border-gray-200/70 dark:border-white/5 lg:h-auto lg:w-1/2 lg:border-l lg:border-t-0">
+                                <WorkoutMap coordinates={coords} className="h-full w-full" />
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
-          )}
-
-          {/* No Workouts Message */}
-          {summary && summary.allWorkouts && summary.allWorkouts.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-lg text-gray-600 dark:text-gray-400">
+          ) : (
+            <Card variant="default" padding="lg" className="text-center">
+              <p className="text-gray-600 dark:text-gray-400">
                 No workouts found for the selected date range.
               </p>
-            </div>
+            </Card>
           )}
-        </div>
-      </main>
-      <Footer />
+        </>
+      )}
+
+      {/* Empty state before first fetch */}
+      {!loading && !summary && !error && (
+        <Card variant="default" padding="lg" className="text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10 text-blue-500">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 6h18M3 14h12M3 18h8" />
+            </svg>
+          </div>
+          <h3 className="display-heading text-lg font-semibold text-gray-900 dark:text-gray-50">
+            Pick a range to get started
+          </h3>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            Choose a quick preset or select start and end dates above.
+          </p>
+        </Card>
+      )}
+    </AppShell>
+  );
+}
+
+// -- Helpers ---------------------------------------------------------------
+
+function StatPill({
+  label,
+  value,
+  unit,
+}: {
+  label: string;
+  value: string;
+  unit?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-gray-200/70 bg-white/70 px-3 py-2 dark:border-white/5 dark:bg-white/5">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+        {label}
+      </div>
+      <div className="mt-0.5 flex items-baseline gap-1">
+        <span className="text-base font-bold tabular-nums text-gray-900 dark:text-gray-50">
+          {value}
+        </span>
+        {unit && (
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+            {unit}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RangeRow({
+  label,
+  colorClass,
+  minLabel,
+  maxLabel,
+  avgLabel,
+  lo,
+  hi,
+  value,
+  unit,
+}: {
+  label: string;
+  colorClass: string;
+  minLabel: string;
+  maxLabel: string;
+  avgLabel: string;
+  lo: number;
+  hi: number;
+  value: number;
+  unit?: string;
+}) {
+  const span = hi - lo || 1;
+  const pct = Math.max(0, Math.min(100, ((value - lo) / span) * 100));
+  return (
+    <div>
+      <div className="mb-1.5 flex items-baseline justify-between text-sm">
+        <span className="font-medium text-gray-700 dark:text-gray-200">
+          {label}
+        </span>
+        <span className="tabular-nums font-semibold text-gray-900 dark:text-gray-50">
+          {avgLabel}
+          {unit && (
+            <span className="ml-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+              {unit}
+            </span>
+          )}
+        </span>
+      </div>
+      <div className="relative h-2 overflow-hidden rounded-full bg-gray-200/70 dark:bg-white/10">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className={`absolute inset-y-0 left-0 rounded-full bg-gradient-to-r ${colorClass}`}
+        />
+      </div>
+      <div className="mt-1 flex justify-between text-[10px] uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+        <span>min {minLabel}</span>
+        <span>max {maxLabel}</span>
+      </div>
     </div>
   );
 }
 
 export default function TrainingSummaryPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <AppShell hidePageHeader maxWidth="xl">
+          <div className="flex min-h-[40vh] items-center justify-center">
+            <Spinner size="lg" variant="brand" />
+          </div>
+        </AppShell>
+      }
+    >
       <TrainingSummaryPageContent />
     </Suspense>
   );
 }
-

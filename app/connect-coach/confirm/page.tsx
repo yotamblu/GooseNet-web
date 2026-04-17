@@ -1,6 +1,6 @@
 /**
  * Connect Coach Confirmation Page
- * Shows coach information and asks for confirmation before connecting
+ * Shows coach information and asks for confirmation before connecting.
  */
 
 "use client";
@@ -8,22 +8,171 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import { motion, useReducedMotion } from "framer-motion";
 import { useAuth } from "../../../context/AuthContext";
 import { useRequireAuth } from "../../../hooks/useRequireAuth";
 import { apiFetch } from "../../../lib/api";
 import { getToken } from "../../../lib/auth";
 import { API_BASE_URL } from "../../../lib/api-config";
-import ThemeToggle from "../../components/ThemeToggle";
-import Footer from "../../components/Footer";
 import { getProfilePicSrc } from "../../../lib/profile-pic-utils";
+import {
+  AppShell,
+  Button,
+  Card,
+  Spinner,
+  fadeUp,
+  stagger,
+  scaleIn,
+  springSoft,
+} from "../../components/ui";
 
 interface CoachNameResponse {
   coachUsername: string;
 }
 
+function ConnectionHero({
+  leftSrc,
+  leftLabel,
+  rightSrc,
+  rightLabel,
+  linked,
+  triumphant,
+}: {
+  leftSrc?: string | null;
+  leftLabel: string;
+  rightSrc?: string | null;
+  rightLabel: string;
+  linked: boolean;
+  triumphant: boolean;
+}) {
+  const reduce = useReducedMotion();
+  const leftPic = leftSrc ? getProfilePicSrc(leftSrc) : null;
+  const rightPic = rightSrc ? getProfilePicSrc(rightSrc) : null;
+
+  return (
+    <div className="relative mx-auto flex w-full max-w-md items-center justify-between px-2 py-6">
+      {/* Athlete (user) */}
+      <div className="relative flex flex-col items-center gap-2">
+        <div className="relative">
+          <span
+            aria-hidden
+            className={`absolute inset-0 -m-1 rounded-full bg-gradient-to-tr from-blue-500/50 via-purple-500/40 to-teal-400/40 blur-md ${
+              triumphant && !reduce ? "animate-pulse-glow" : ""
+            }`}
+          />
+          <div className="relative h-20 w-20 sm:h-24 sm:w-24 rounded-full border-[3px] border-white dark:border-gray-900 overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold shadow-lg">
+            {leftPic ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={leftPic}
+                alt={leftLabel}
+                referrerPolicy="no-referrer"
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            ) : (
+              leftLabel.slice(0, 1).toUpperCase()
+            )}
+          </div>
+        </div>
+        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{leftLabel}</span>
+        <span className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-500">You</span>
+      </div>
+
+      {/* Connecting line */}
+      <div className="relative flex-1 mx-2 sm:mx-4">
+        <svg
+          viewBox="0 0 220 60"
+          preserveAspectRatio="none"
+          className="h-14 w-full"
+          aria-hidden
+        >
+          <defs>
+            <linearGradient id="linkGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#3b82f6" />
+              <stop offset="50%" stopColor="#a855f7" />
+              <stop offset="100%" stopColor="#2dd4bf" />
+            </linearGradient>
+          </defs>
+          {/* Base dashed track */}
+          <path
+            d="M8 30 Q 110 0 212 30"
+            fill="none"
+            stroke="currentColor"
+            className="text-gray-300 dark:text-white/10"
+            strokeWidth={2}
+            strokeDasharray="4 6"
+            strokeLinecap="round"
+          />
+          {/* Animated link forming */}
+          <motion.path
+            d="M8 30 Q 110 0 212 30"
+            fill="none"
+            stroke="url(#linkGrad)"
+            strokeWidth={triumphant ? 3.5 : 2.5}
+            strokeLinecap="round"
+            initial={reduce ? { pathLength: linked ? 1 : 0 } : { pathLength: 0 }}
+            animate={{ pathLength: linked ? 1 : 0 }}
+            transition={reduce ? { duration: 0 } : { duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+          />
+          {/* Heart / link icon in the middle when triumphant */}
+          {triumphant && (
+            <motion.g
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={springSoft}
+            >
+              <circle cx="110" cy="15" r="12" fill="url(#linkGrad)" />
+              <path
+                d="M105 15l3.5 3.5L115 12"
+                stroke="white"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            </motion.g>
+          )}
+        </svg>
+      </div>
+
+      {/* Coach */}
+      <div className="relative flex flex-col items-center gap-2">
+        <div className="relative">
+          <span
+            aria-hidden
+            className={`absolute inset-0 -m-1 rounded-full bg-gradient-to-tr from-teal-400/50 via-blue-500/40 to-purple-500/40 blur-md ${
+              triumphant && !reduce ? "animate-pulse-glow" : ""
+            }`}
+          />
+          <div className="relative h-20 w-20 sm:h-24 sm:w-24 rounded-full border-[3px] border-white dark:border-gray-900 overflow-hidden bg-gradient-to-br from-teal-400 via-blue-500 to-purple-500 flex items-center justify-center text-white text-xl font-bold shadow-lg">
+            {rightPic ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={rightPic}
+                alt={rightLabel}
+                referrerPolicy="no-referrer"
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            ) : (
+              rightLabel.slice(0, 1).toUpperCase()
+            )}
+          </div>
+        </div>
+        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{rightLabel}</span>
+        <span className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-500">Coach</span>
+      </div>
+    </div>
+  );
+}
+
 function ConnectCoachConfirmPageContent() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [coachCode, setCoachCode] = useState<string | null>(null);
@@ -34,17 +183,14 @@ function ConnectCoachConfirmPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Require authentication
   useRequireAuth();
 
-  // Check if user is an athlete and redirect if not
   useEffect(() => {
     if (!loading && user && user.role?.toLowerCase() === "coach") {
       router.push("/dashboard");
     }
   }, [user, loading, router]);
 
-  // Fetch coach information
   useEffect(() => {
     const fetchCoachInfo = async () => {
       const code = searchParams.get("coachCode");
@@ -60,14 +206,12 @@ function ConnectCoachConfirmPageContent() {
         setIsLoading(true);
         setError(null);
 
-        // Fetch coach name
         const coachNameResponse = await apiFetch<CoachNameResponse>(
           `/api/coachConnection/getCoachName?coachId=${encodeURIComponent(code)}`
         );
         const fetchedCoachName = coachNameResponse.coachUsername;
         setCoachName(fetchedCoachName);
 
-        // Fetch coach profile picture
         try {
           const profilePicResponse = await apiFetch<string>(
             `/api/ProfilePIc?userName=${encodeURIComponent(fetchedCoachName)}`
@@ -75,11 +219,14 @@ function ConnectCoachConfirmPageContent() {
           setCoachProfilePic(profilePicResponse);
         } catch (picErr) {
           console.warn("Failed to fetch profile picture:", picErr);
-          // Profile pic is optional, continue without it
         }
       } catch (err) {
         console.error("Failed to fetch coach information:", err);
-        setError(err instanceof Error ? err.message : "Failed to load coach information. Please check the code and try again.");
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load coach information. Please check the code and try again."
+        );
       } finally {
         setIsLoading(false);
       }
@@ -98,7 +245,6 @@ function ConnectCoachConfirmPageContent() {
       setError(null);
       setSuccess(false);
 
-      // Call API to connect with coach
       const token = getToken();
       const response = await fetch(
         `${API_BASE_URL}/api/coachConnection/connect`,
@@ -126,11 +272,9 @@ function ConnectCoachConfirmPageContent() {
         throw new Error(errorData.message || "Failed to connect with coach");
       }
 
-      // Show success animation
       setSuccess(true);
       setIsConnecting(false);
 
-      // Redirect to dashboard after showing success animation
       setTimeout(() => {
         router.push("/dashboard");
       }, 2000);
@@ -145,261 +289,178 @@ function ConnectCoachConfirmPageContent() {
     router.push("/connect-coach");
   };
 
-  const handleLogout = async () => {
-    await logout();
-  };
-
   if (loading || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+      <AppShell hidePageHeader>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <Spinner size="lg" />
+            <p className="text-sm text-gray-600 dark:text-gray-400">Loading coach details…</p>
+          </div>
         </div>
-      </div>
+      </AppShell>
     );
   }
 
-  // Don't render if not an athlete (redirect will happen)
   if (!user || user.role?.toLowerCase() === "coach") {
     return null;
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <Image
-              src="/logo/goosenet_logo.png"
-              alt="GooseNet"
-              width={32}
-              height={32}
-              className="h-6 w-auto sm:h-8"
-            />
-            <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">GooseNet</span>
-          </Link>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <ThemeToggle />
-            {user?.profilePicString && (
-              <img
-                src={getProfilePicSrc(user.profilePicString)}
-                alt={user.userName}
-                referrerPolicy="no-referrer"
-                className="hidden md:block h-10 w-10 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
-                onError={(e) => {
-                  // Fallback: hide image if it fails to load
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
+    <AppShell
+      title="Confirm Connection"
+      subtitle="Review the coach before pairing your account"
+      gradientTitle
+      maxWidth="md"
+    >
+      <motion.div
+        variants={stagger}
+        initial="hidden"
+        animate="show"
+        className="space-y-6"
+      >
+        {success ? (
+          <motion.div variants={scaleIn}>
+            <Card variant="glass" padding="lg" className="text-center">
+              <ConnectionHero
+                leftSrc={user?.profilePicString}
+                leftLabel={user?.userName || "You"}
+                rightSrc={coachProfilePic}
+                rightLabel={coachName || "Coach"}
+                linked
+                triumphant
               />
-            )}
-            <button
-              onClick={handleLogout}
-              className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Logout
-            </button>
-          </div>
-        </nav>
-      </header>
-
-      {/* Main Content */}
-      <main className="relative flex-1 px-4 py-8 sm:px-6 sm:py-12 lg:py-24 overflow-hidden">
-        {/* Glowing purple/blue background effects */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-500/30 dark:bg-purple-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute -top-20 -right-20 w-80 h-80 bg-blue-500/30 dark:bg-blue-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-purple-500/20 dark:from-purple-500/15 dark:via-blue-500/15 dark:to-purple-500/15 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-pink-500/20 dark:bg-pink-500/15 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-500/25 dark:bg-blue-500/15 rounded-full blur-3xl"></div>
-        </div>
-
-        <div className="relative mx-auto max-w-3xl">
-          {/* Page Title */}
-          <div className="text-center mb-8 sm:mb-12">
-            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100 lg:text-5xl">
-              Confirm Connection
-            </h1>
-            <p className="mt-2 sm:mt-4 text-base sm:text-lg text-gray-600 dark:text-gray-400 px-2">
-              Review the coach information before connecting
-            </p>
-          </div>
-
-          {/* Confirmation Card */}
-          <div className="relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-4 sm:p-6 lg:p-8">
-            {success ? (
-              <div className="text-center">
-                <div className="mb-4">
-                  <div className="mx-auto h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center transition-all duration-300 animate-[bounce_0.6s_ease-in-out]">
-                    <svg
-                      className="h-10 w-10 sm:h-12 sm:w-12 text-green-600 dark:text-green-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={3}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Connection Successful!
-                </p>
-                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 px-2">
-                  You've been successfully connected with coach {coachName}. Redirecting to dashboard...
-                </p>
+              <motion.div
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={springSoft}
+                className="mx-auto mt-2 mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-teal-500/15 text-teal-500 animate-pulse-glow"
+              >
+                <svg className="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </motion.div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+                You&apos;re connected!
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+                You&apos;re now paired with coach{" "}
+                <span className="font-semibold text-gray-900 dark:text-gray-100">{coachName}</span>.
+                Redirecting to your dashboard…
+              </p>
+            </Card>
+          </motion.div>
+        ) : error ? (
+          <motion.div variants={fadeUp}>
+            <Card variant="glass" padding="lg" className="text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/10 text-rose-500">
+                <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </div>
-            ) : error ? (
-              <div className="text-center">
-                <div className="mb-4">
-                  <div className="mx-auto h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center transition-all duration-300 animate-[bounce_0.6s_ease-in-out]">
-                    <svg
-                      className="h-10 w-10 sm:h-12 sm:w-12 text-red-600 dark:text-red-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={3}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Connection Failed
-                </p>
-                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 px-2">{error}</p>
-                <button
-                  onClick={handleCancel}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
-                >
-                  Go Back
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Coach Information */}
-                <div className="text-center mb-8">
-                  {coachProfilePic && (
-                    <div className="mb-6 flex justify-center">
-                      <img
-                        src={getProfilePicSrc(coachProfilePic) || ""}
-                        alt={coachName || "Coach"}
-                        referrerPolicy="no-referrer"
-                        className="h-24 w-24 sm:h-32 sm:w-32 rounded-full border-4 border-blue-600 dark:border-blue-400 object-cover shadow-lg"
-                        onError={(e) => {
-                          // Fallback: hide image if it fails to load
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
-                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                    Are you sure you want to connect with coach{" "}
-                    <span className="text-blue-600 dark:text-blue-400">{coachName || "..."}</span>?
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                Connection failed
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-5 max-w-md mx-auto">{error}</p>
+              <Button variant="primary" onClick={handleCancel}>
+                Go back
+              </Button>
+            </Card>
+          </motion.div>
+        ) : (
+          <>
+            {/* Hero illustration */}
+            <motion.div variants={fadeUp}>
+              <Card variant="glass" padding="lg">
+                <ConnectionHero
+                  leftSrc={user?.profilePicString}
+                  leftLabel={user?.userName || "You"}
+                  rightSrc={coachProfilePic}
+                  rightLabel={coachName || "Coach"}
+                  linked={!!coachName}
+                  triumphant={false}
+                />
+
+                {/* Coach details */}
+                <div className="text-center mt-2 mb-6">
+                  <p className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+                    Pairing with
+                  </p>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    Coach{" "}
+                    <span className="text-gradient-brand">{coachName || "…"}</span>
                   </h2>
-                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-                    Once connected, you'll be able to receive structured workouts and training plans from this coach.
+                  <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 max-w-md mx-auto">
+                    Once connected, this coach can assign structured workouts and training plans
+                    straight to your Garmin. You can disconnect at any time from your settings.
                   </p>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                  <button
+                {/* Action buttons */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    fullWidth
                     onClick={handleCancel}
                     disabled={isConnecting}
-                    className="flex-1 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Cancel
-                  </button>
-                  <button
+                    Decline
+                  </Button>
+                  <Button
+                    variant="gradient"
+                    size="lg"
+                    fullWidth
                     onClick={handleConfirm}
                     disabled={isConnecting || !coachName}
-                    className="flex-1 rounded-lg bg-blue-600 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {isConnecting ? (
-                      <>
-                        <svg
-                          className="animate-spin h-5 w-5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
+                    loading={isConnecting}
+                    iconLeft={
+                      !isConnecting ? (
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
-                        Connecting...
-                      </>
-                    ) : (
-                      "Confirm"
-                    )}
-                  </button>
+                      ) : undefined
+                    }
+                  >
+                    {isConnecting ? "Connecting…" : "Confirm connection"}
+                  </Button>
                 </div>
-              </>
-            )}
-          </div>
+              </Card>
+            </motion.div>
 
-          {/* Back to Connect Coach */}
-          <div className="mt-6 sm:mt-8 text-center">
-            <Link
-              href="/connect-coach"
-              className="inline-flex items-center gap-2 text-sm sm:text-base text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
-            >
-              <svg
-                className="h-4 w-4 sm:h-5 sm:w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+            <motion.div variants={fadeUp} className="text-center">
+              <Link
+                href="/connect-coach"
+                className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                />
-              </svg>
-              Back to Enter Code
-            </Link>
-          </div>
-        </div>
-      </main>
-      <Footer />
-    </div>
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Enter a different code
+              </Link>
+            </motion.div>
+          </>
+        )}
+      </motion.div>
+    </AppShell>
   );
 }
 
 export default function ConnectCoachConfirmPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <AppShell hidePageHeader>
+          <div className="flex min-h-[50vh] items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <Spinner size="lg" />
+              <p className="text-sm text-gray-600 dark:text-gray-400">Loading…</p>
+            </div>
+          </div>
+        </AppShell>
+      }
+    >
       <ConnectCoachConfirmPageContent />
     </Suspense>
   );
 }
-

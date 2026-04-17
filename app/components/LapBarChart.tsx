@@ -1,9 +1,20 @@
 /**
  * LapBarChart Component
- * Displays laps as bars with height based on pace, width based on distance, and color based on pace
+ *
+ * Each lap is rendered as a bar whose width encodes distance (relative to the
+ * total workout) and height encodes pace (faster laps → taller bars). Bars are
+ * filled with a smooth brand→accent gradient, with rounded tops. Bars animate
+ * grow-from-bottom on mount with a tight stagger and show a tooltip on hover.
+ *
+ * Exported props are unchanged from the previous version so external consumers
+ * (workout detail page, planned workout pages) continue to work as-is.
  */
 
 "use client";
+
+import { useId, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { cn } from "./ui/cn";
 
 interface Lap {
   lapDistanceInKilometers: number;
@@ -19,145 +30,299 @@ interface LapBarChartProps {
   onLapClick?: (index: number | null) => void;
 }
 
-export default function LapBarChart({ laps, className = "", selectedLapIndex = null, onLapClick }: LapBarChartProps) {
+function formatPace(pace: number): string {
+  if (!pace || !isFinite(pace) || pace <= 0) return "0:00";
+  const mins = Math.floor(pace);
+  const secs = Math.round((pace - mins) * 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+function formatDuration(seconds: number): string {
+  if (!seconds || seconds <= 0) return "0:00";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.round(seconds % 60);
+  if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+export default function LapBarChart({
+  laps,
+  className = "",
+  selectedLapIndex = null,
+  onLapClick,
+}: LapBarChartProps) {
+  const reduce = useReducedMotion();
+  const gradientId = useId().replace(/:/g, "");
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
   if (laps.length === 0) {
     return (
-      <div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 ${className}`}>
+      <div
+        className={cn(
+          "rounded-2xl border border-gray-200 dark:border-white/10",
+          "bg-white dark:bg-gray-900/60 p-6",
+          className
+        )}
+      >
         <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Lap Performance</h2>
         <p className="text-gray-500 dark:text-gray-400 text-sm">No lap data available</p>
       </div>
     );
   }
 
-  // Calculate total distance for relative widths
-  const totalDistance = laps.reduce((sum, lap) => sum + lap.lapDistanceInKilometers, 0);
-
-  // Find min and max pace for color gradient and height normalization
-  const paces = laps.map(lap => lap.lapPaceInMinKm);
+  const totalDistance = laps.reduce((sum, lap) => sum + lap.lapDistanceInKilometers, 0) || 1;
+  const paces = laps.map((lap) => lap.lapPaceInMinKm);
   const minPace = Math.min(...paces);
   const maxPace = Math.max(...paces);
-  const paceRange = maxPace - minPace || 1; // Avoid division by zero
+  const paceRange = maxPace - minPace || 1;
 
-  // Color gradient function: faster (lower pace) = blue/purple, slower (higher pace) = red/orange
-  // Using GooseNet color scheme: blue-600 to purple-600 for fast, purple-600 to red-500 for slow
-  const getColorForPace = (pace: number): string => {
-    // Normalize pace to 0-1 range (0 = fastest, 1 = slowest)
-    const normalized = (pace - minPace) / paceRange;
-    
-    // Split into two gradients:
-    // Fast laps (0-0.5): Blue to Purple (blue-600 -> purple-600)
-    // Slow laps (0.5-1): Purple to Red (purple-600 -> red-500)
-    
-    if (normalized <= 0.5) {
-      // Fast: Blue to Purple gradient
-      const ratio = normalized * 2; // 0 to 1
-      // Interpolate between blue-600 (#2563eb) and purple-600 (#9333ea)
-      const r = Math.round(37 + (147 - 37) * ratio);
-      const g = Math.round(99 + (51 - 99) * ratio);
-      const b = Math.round(235 + (234 - 235) * ratio);
-      return `rgb(${r}, ${g}, ${b})`;
-    } else {
-      // Slow: Purple to Red gradient
-      const ratio = (normalized - 0.5) * 2; // 0 to 1
-      // Interpolate between purple-600 (#9333ea) and red-500 (#ef4444)
-      const r = Math.round(147 + (239 - 147) * ratio);
-      const g = Math.round(51 + (68 - 51) * ratio);
-      const b = Math.round(234 + (68 - 234) * ratio);
-      return `rgb(${r}, ${g}, ${b})`;
-    }
-  };
+  // Normalize 0..1 where 0 = slowest, 1 = fastest
+  const getPaceIntensity = (pace: number): number =>
+    (maxPace - pace) / paceRange;
 
-  // Calculate bar dimensions
   const bars = laps.map((lap, index) => {
-    // Height: Inverted pace (lower pace = faster = higher bar)
-    // Normalize to 0-1 range where 0 = slowest (lowest bar), 1 = fastest (highest bar)
-    const normalizedPace = (maxPace - lap.lapPaceInMinKm) / paceRange;
-    const height = Math.max(normalizedPace * 100, 10); // Min 10% height, max 100%
-
-    // Width: Relative to total distance
-    const width = (lap.lapDistanceInKilometers / totalDistance) * 100;
-
-    return {
-      index,
-      lap,
-      height,
-      width,
-      color: getColorForPace(lap.lapPaceInMinKm),
-    };
+    const intensity = getPaceIntensity(lap.lapPaceInMinKm);
+    const heightPct = Math.max(intensity * 100, 12);
+    const widthPct = (lap.lapDistanceInKilometers / totalDistance) * 100;
+    return { index, lap, intensity, heightPct, widthPct };
   });
 
-  // Chart dimensions
-  const chartHeight = 200;
-  const chartPadding = 20;
+  const chartHeight = 220;
+  const chartPadding = 16;
+  const activeIndex = hoverIndex ?? selectedLapIndex ?? null;
+  const activeBar = activeIndex != null ? bars[activeIndex] : null;
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // If clicking directly on the container div (not on a bar), deselect
-    const target = e.target as HTMLElement;
-    if (target === e.currentTarget || target.classList.contains('flex') || target.classList.contains('relative')) {
+    if (e.target === e.currentTarget) {
       onLapClick?.(null);
     }
   };
 
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 ${className}`}>
-      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Lap Performance</h2>
-      <div className="relative cursor-pointer" onClick={handleContainerClick}>
+    <div
+      className={cn(
+        "rounded-2xl border border-gray-200 dark:border-white/10",
+        "bg-white dark:bg-gray-900/60 p-6",
+        "shadow-sm",
+        className
+      )}
+    >
+      <div className="mb-5 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-100">
+            Lap Performance
+          </h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Width · distance · &nbsp;Height · pace (taller = faster)
+          </p>
+        </div>
+        <div className="hidden sm:flex items-center gap-3 text-[11px] text-gray-500 dark:text-gray-400">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-blue-500" />
+            Fastest {formatPace(minPace)}/km
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-rose-500" />
+            Slowest {formatPace(maxPace)}/km
+          </span>
+        </div>
+      </div>
+
+      {/* SVG defs for the gradient stops — shared across bars via fill=url(#…) */}
+      <svg aria-hidden width="0" height="0" className="absolute">
+        <defs>
+          <linearGradient id={`fast-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#22d3ee" />
+            <stop offset="55%" stopColor="#3b82f6" />
+            <stop offset="100%" stopColor="#6366f1" />
+          </linearGradient>
+          <linearGradient id={`mid-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#a855f7" />
+            <stop offset="100%" stopColor="#6366f1" />
+          </linearGradient>
+          <linearGradient id={`slow-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#f97316" />
+            <stop offset="100%" stopColor="#ef4444" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      <div
+        className="relative cursor-pointer select-none"
+        onClick={handleContainerClick}
+      >
+        {/* Horizontal grid lines */}
         <div
-          className="flex items-end"
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0"
+          style={{ top: chartPadding, height: chartHeight - chartPadding * 2 }}
+        >
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="absolute left-0 right-0 border-t border-dashed border-gray-200/70 dark:border-white/5"
+              style={{ top: `${(i / 3) * 100}%` }}
+            />
+          ))}
+        </div>
+
+        <div
+          className="relative flex items-end gap-0.5"
           style={{
             height: `${chartHeight}px`,
             padding: `${chartPadding}px 0`,
           }}
+          onMouseLeave={() => setHoverIndex(null)}
         >
-          {bars.map((bar, index) => {
-            const isSelected = selectedLapIndex === index;
+          {bars.map((bar) => {
+            const isSelected = selectedLapIndex === bar.index;
+            const isHovered = hoverIndex === bar.index;
+            const dim = activeIndex != null && !isSelected && !isHovered;
+
+            // Pick gradient by pace bucket
+            const gradientUrl =
+              bar.intensity >= 0.66
+                ? `url(#fast-${gradientId})`
+                : bar.intensity >= 0.33
+                  ? `url(#mid-${gradientId})`
+                  : `url(#slow-${gradientId})`;
+
             return (
               <div
-                key={index}
-                className="relative group cursor-pointer"
-                style={{
-                  width: `${bar.width}%`,
-                  height: `${chartHeight - chartPadding * 2}px`,
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                }}
+                key={bar.index}
+                role="button"
+                aria-label={`Lap ${bar.index + 1}: ${bar.lap.lapDistanceInKilometers.toFixed(2)} km at ${formatPace(bar.lap.lapPaceInMinKm)} per km`}
+                className="relative flex h-full items-end"
+                style={{ width: `${bar.widthPct}%`, minWidth: "6px" }}
                 onClick={(e) => {
-                  e.stopPropagation(); // Prevent container click
-                  onLapClick?.(index);
+                  e.stopPropagation();
+                  onLapClick?.(isSelected ? null : bar.index);
                 }}
+                onMouseEnter={() => setHoverIndex(bar.index)}
+                onFocus={() => setHoverIndex(bar.index)}
+                tabIndex={0}
               >
-                <div
-                  className={`w-full transition-all hover:opacity-80 ${
-                    isSelected
-                      ? 'border-blue-600 dark:border-blue-400 shadow-lg'
-                      : 'border-gray-300 dark:border-gray-600'
-                  }`}
-                  style={{
-                    height: `${bar.height}%`,
-                    backgroundColor: bar.color,
-                    minHeight: '4px', // Ensure very small bars are visible
-                    transform: isSelected ? 'scale(1.05)' : 'scale(1)',
-                    zIndex: isSelected ? 10 : 1,
-                    borderWidth: 'clamp(1px, 0.15vw, 2px)',
-                    borderStyle: 'solid',
-                    boxShadow: isSelected 
-                      ? `0 0 0 clamp(1px, 0.15vw, 2px) rgba(59, 130, 246, 0.5), 0 0 0 clamp(2px, 0.3vw, 4px) rgba(59, 130, 246, 0.3)` 
-                      : 'none',
+                {/* The bar itself */}
+                <motion.div
+                  className={cn(
+                    "relative mx-[1px] w-[calc(100%-2px)] origin-bottom overflow-hidden",
+                    "rounded-t-md transition-[filter,opacity] duration-200",
+                    dim ? "opacity-55" : "opacity-100",
+                    (isSelected || isHovered) && "shadow-[0_0_0_2px_rgba(59,130,246,0.35)]"
+                  )}
+                  initial={reduce ? false : { scaleY: 0, opacity: 0 }}
+                  animate={reduce ? undefined : { scaleY: 1, opacity: 1 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 220,
+                    damping: 24,
+                    delay: Math.min(bar.index * 0.025, 0.6),
                   }}
-                  title={`Lap ${bar.index + 1}: ${bar.lap.lapDistanceInKilometers.toFixed(2)} km, Pace: ${Math.floor(bar.lap.lapPaceInMinKm)}:${Math.round((bar.lap.lapPaceInMinKm - Math.floor(bar.lap.lapPaceInMinKm)) * 60).toString().padStart(2, '0')} /km`}
-                />
+                  style={{
+                    height: `${bar.heightPct}%`,
+                    minHeight: "6px",
+                  }}
+                >
+                  {/* Gradient via inline SVG to match the lap pace bucket */}
+                  <svg
+                    className="absolute inset-0 h-full w-full"
+                    preserveAspectRatio="none"
+                    viewBox="0 0 10 10"
+                    aria-hidden
+                  >
+                    <rect x="0" y="0" width="10" height="10" fill={gradientUrl} />
+                  </svg>
+                  {/* Subtle inner highlight */}
+                  <span
+                    aria-hidden
+                    className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/30 to-transparent"
+                  />
+                  {/* Selected ring pulse */}
+                  {isSelected && !reduce && (
+                    <motion.span
+                      aria-hidden
+                      className="absolute inset-0 rounded-t-md ring-2 ring-blue-500/70 dark:ring-blue-400/70"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: [0.4, 1, 0.4] }}
+                      transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                  )}
+                </motion.div>
               </div>
             );
           })}
+
+          {/* Tooltip */}
+          {activeBar && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.15 }}
+              className={cn(
+                "pointer-events-none absolute z-10 min-w-[140px] -translate-x-1/2",
+                "rounded-lg border border-gray-200/80 dark:border-white/10",
+                "bg-white/95 dark:bg-gray-900/90 backdrop-blur-md",
+                "px-3 py-2 text-xs shadow-lg"
+              )}
+              style={{
+                // Position near the middle of the bar horizontally
+                left: `calc(${bars
+                  .slice(0, activeBar.index)
+                  .reduce((sum, b) => sum + b.widthPct, 0) + activeBar.widthPct / 2}% )`,
+                top: 0,
+              }}
+            >
+              <div className="font-semibold text-gray-900 dark:text-gray-100">
+                Lap {activeBar.index + 1}
+              </div>
+              <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-gray-600 dark:text-gray-300">
+                <span className="text-gray-500 dark:text-gray-400">Distance</span>
+                <span className="text-right tabular-nums">{activeBar.lap.lapDistanceInKilometers.toFixed(2)} km</span>
+                <span className="text-gray-500 dark:text-gray-400">Duration</span>
+                <span className="text-right tabular-nums">{formatDuration(activeBar.lap.lapDurationInSeconds)}</span>
+                <span className="text-gray-500 dark:text-gray-400">Pace</span>
+                <span className="text-right tabular-nums font-semibold text-blue-600 dark:text-blue-400">
+                  {formatPace(activeBar.lap.lapPaceInMinKm)} /km
+                </span>
+                {activeBar.lap.avgHeartRate > 0 && (
+                  <>
+                    <span className="text-gray-500 dark:text-gray-400">Avg HR</span>
+                    <span className="text-right tabular-nums">{Math.round(activeBar.lap.avgHeartRate)} bpm</span>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          )}
         </div>
-        
-        {/* Y-axis labels (pace range) */}
-        <div className="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
-          <span>Fastest: {Math.floor(minPace)}:{Math.round((minPace - Math.floor(minPace)) * 60).toString().padStart(2, '0')} /km</span>
-          <span>Slowest: {Math.floor(maxPace)}:{Math.round((maxPace - Math.floor(maxPace)) * 60).toString().padStart(2, '0')} /km</span>
+
+        {/* Lap axis (numbers underneath, densified automatically) */}
+        <div className="mt-2 flex gap-0.5">
+          {bars.map((bar) => (
+            <div
+              key={bar.index}
+              className="text-center text-[10px] font-medium text-gray-400 dark:text-gray-500"
+              style={{ width: `${bar.widthPct}%`, minWidth: "6px" }}
+            >
+              {bars.length <= 20 || (bar.index + 1) % Math.ceil(bars.length / 10) === 0
+                ? bar.index + 1
+                : ""}
+            </div>
+          ))}
         </div>
+      </div>
+
+      {/* Mobile legend */}
+      <div className="mt-3 flex sm:hidden items-center gap-3 text-[11px] text-gray-500 dark:text-gray-400">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-blue-500" />
+          Fastest {formatPace(minPace)}/km
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-rose-500" />
+          Slowest {formatPace(maxPace)}/km
+        </span>
       </div>
     </div>
   );
 }
-

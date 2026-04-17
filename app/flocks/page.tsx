@@ -5,18 +5,39 @@
 
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
-import ThemeToggle from "../components/ThemeToggle";
-import Footer from "../components/Footer";
-import { getProfilePicSrc } from "../../lib/profile-pic-utils";
 import { apiService } from "../services/api";
+import {
+  AppShell,
+  Badge,
+  Button,
+  Card,
+  CardDescription,
+  CardTitle,
+  Skeleton,
+  Spinner,
+  fadeUp,
+  staggerTight,
+} from "../components/ui";
+
+const IconPlus = (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+  </svg>
+);
+
+const IconFlocks = (
+  <svg className="h-10 w-10 text-blue-500 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+  </svg>
+);
 
 export default function FlocksPage() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [flocks, setFlocks] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +57,7 @@ export default function FlocksPage() {
         setError(null);
         const response = await apiService.getFlocks<{ flocks: string[] }>(user.apiKey);
         console.log("Flocks API response:", response);
-        
+
         // Extract flocks array from response
         // Response structure: { flocks: [...] }
         let flocksData: string[] = [];
@@ -52,7 +73,7 @@ export default function FlocksPage() {
           // Direct array response
           flocksData = response.data;
         }
-        
+
         setFlocks(flocksData);
       } catch (err) {
         console.error("Failed to fetch flocks:", err);
@@ -68,199 +89,176 @@ export default function FlocksPage() {
     }
   }, [user, authLoading]);
 
-  const handleLogout = async () => {
-    await logout();
-  };
-
   // Helper function to get the first character of a string (for profile pic)
   const getFirstChar = (name: string): string => {
     if (!name || name.length === 0) return "?";
     return name.charAt(0).toUpperCase();
   };
 
-  if (authLoading || loading) {
+  // Gradients cycle to give each flock a distinct header strip.
+  const gradients = [
+    "from-blue-500 via-indigo-500 to-purple-500",
+    "from-teal-400 via-cyan-500 to-blue-500",
+    "from-purple-500 via-pink-500 to-rose-500",
+    "from-amber-400 via-orange-500 to-rose-500",
+    "from-emerald-400 via-teal-500 to-cyan-500",
+    "from-fuchsia-500 via-purple-500 to-blue-500",
+  ];
+
+  if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+      <AppShell title="Flocks" subtitle="Your training groups" maxWidth="xl">
+        <div className="flex items-center justify-center py-24">
+          <Spinner size="lg" variant="brand" />
         </div>
-      </div>
+      </AppShell>
     );
   }
 
-  // Check if user is a coach
   if (user && user.role?.toLowerCase() !== "coach") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <p className="text-lg text-gray-600 dark:text-gray-400">Access denied. This page is for coaches only.</p>
-          <Link href="/dashboard" className="mt-4 text-blue-600 dark:text-blue-400 hover:underline">
+      <AppShell title="Flocks" maxWidth="md">
+        <Card padding="lg" className="text-center">
+          <p className="text-gray-700 dark:text-gray-300">
+            Access denied. This page is for coaches only.
+          </p>
+          <Link
+            href="/dashboard"
+            className="mt-4 inline-block text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+          >
             Return to Dashboard
           </Link>
-        </div>
-      </div>
+        </Card>
+      </AppShell>
     );
   }
 
+  const flocksArray = Array.isArray(flocks) ? flocks : [];
+
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
-          <Link href="/" className="flex items-center gap-2">
-            <Image
-              src="/logo/goosenet_logo.png"
-              alt="GooseNet"
-              width={32}
-              height={32}
-              className="h-6 w-auto sm:h-8"
-            />
-            <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">GooseNet</span>
-          </Link>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <ThemeToggle />
-            {user?.profilePicString && (
-              <img
-                src={getProfilePicSrc(user.profilePicString)}
-                alt={user.userName}
-                referrerPolicy="no-referrer"
-                className="hidden md:block h-10 w-10 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
-              />
-            )}
-            <button
-              onClick={handleLogout}
-              className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Logout
-            </button>
-          </div>
-        </nav>
-      </header>
+    <AppShell
+      title="Flocks"
+      subtitle="Organize athletes into training groups"
+      actions={
+        <Link href="/flocks/create" aria-label="Create flock">
+          <Button variant="gradient" iconLeft={IconPlus}>
+            Create Flock
+          </Button>
+        </Link>
+      }
+      maxWidth="xl"
+    >
+      {error && (
+        <Card
+          padding="md"
+          className="mb-6 border-rose-500/30 bg-rose-50 text-rose-900 dark:bg-rose-500/10 dark:text-rose-100 dark:border-rose-400/30"
+        >
+          <p className="text-sm">{error}</p>
+        </Card>
+      )}
 
-      {/* Main Content */}
-      <main className="relative flex-1 px-4 py-8 sm:px-6 sm:py-12 lg:py-24 overflow-hidden">
-        {/* Glowing purple/blue background effects */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-500/30 dark:bg-purple-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute -top-20 -right-20 w-80 h-80 bg-blue-500/30 dark:bg-blue-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-purple-500/20 dark:from-purple-500/15 dark:via-blue-500/15 dark:to-purple-500/15 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-pink-500/20 dark:bg-pink-500/15 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-500/25 dark:bg-blue-500/15 rounded-full blur-3xl"></div>
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} padding="none" className="overflow-hidden">
+              <Skeleton h={80} className="rounded-none" />
+              <div className="flex flex-col items-center gap-2 p-5">
+                <Skeleton circle w={56} h={56} className="-mt-12 border-4 border-white dark:border-gray-900" />
+                <Skeleton h={16} className="w-2/3" />
+                <Skeleton h={12} className="w-1/3" />
+                <Skeleton h={34} className="mt-3 w-full" />
+              </div>
+            </Card>
+          ))}
         </div>
-
-        <div className="relative mx-auto max-w-7xl">
-          {/* Header Section */}
-          <div className="mb-6 sm:mb-8">
-            <div className="mb-4 sm:mb-6">
-              <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100 lg:text-5xl">
-                My Flocks
-              </h1>
-              <p className="mt-2 sm:mt-4 text-base sm:text-lg text-gray-600 dark:text-gray-400">
-                View and manage all your athlete groups
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-              <Link
-                href="/flocks/create"
-                className="w-full sm:w-auto rounded-lg bg-blue-600 px-4 py-2.5 sm:py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-              >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                Create Flock
-              </Link>
-              <Link
-                href="/dashboard"
-                className="w-full sm:w-auto rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 sm:py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-center"
-              >
-                Back to Dashboard
-              </Link>
-            </div>
+      ) : flocksArray.length === 0 && !error ? (
+        <Card padding="lg" className="text-center">
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/15 via-purple-500/15 to-teal-400/15 ring-1 ring-inset ring-white/20">
+            {IconFlocks}
           </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="mb-4 sm:mb-6 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 sm:p-4">
-              <p className="text-sm sm:text-base text-red-800 dark:text-red-200">{error}</p>
-            </div>
-          )}
-
-          {/* Flocks Grid */}
-          {!Array.isArray(flocks) || (flocks.length === 0 && !error) ? (
-            <div className="text-center py-8 sm:py-12">
-              <svg
-                className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                />
-              </svg>
-              <h3 className="mt-2 text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">No flocks found</h3>
-              <p className="mt-1 text-sm sm:text-base text-gray-500 dark:text-gray-400 px-4">
-                Get started by creating your first flock.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {Array.isArray(flocks) && flocks.map((flock, index) => (
-                <div
-                  key={index}
-                  className="relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow"
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            No flocks yet
+          </h3>
+          <p className="mx-auto mt-2 max-w-md text-sm text-gray-600 dark:text-gray-400">
+            Create your first flock to organize athletes into training groups.
+          </p>
+          <div className="mt-5">
+            <Link href="/flocks/create">
+              <Button variant="gradient" iconLeft={IconPlus}>
+                Create your first flock
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      ) : (
+        <motion.div
+          variants={staggerTight}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        >
+          {flocksArray.map((flock, index) => {
+            const gradient = gradients[index % gradients.length];
+            return (
+              <motion.div key={`${flock}-${index}`} variants={fadeUp}>
+                <Link
+                  href={`/flocks/manage/${encodeURIComponent(flock)}`}
+                  className="block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-2xl"
                 >
-                  <div className="flex flex-col items-center text-center">
-                    {/* Flock Profile Pic - First Character */}
-                    <div className="mb-3 sm:mb-4">
-                      <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full border-2 border-gray-300 dark:border-gray-700 bg-gradient-to-br from-blue-500 to-purple-600 dark:from-blue-600 dark:to-purple-700 flex items-center justify-center">
-                        <span className="text-3xl sm:text-4xl font-bold text-white">
-                          {getFirstChar(flock)}
-                        </span>
+                  <Card
+                    variant="default"
+                    padding="none"
+                    interactive
+                    className="flex h-full flex-col overflow-hidden"
+                  >
+                    {/* Gradient header strip */}
+                    <div
+                      className={`h-16 bg-gradient-to-r ${gradient}`}
+                      aria-hidden
+                    />
+                    <div className="flex flex-1 flex-col items-center px-5 pb-5 text-center">
+                      <div className="relative -mt-10 mb-3">
+                        <span
+                          aria-hidden
+                          className={`absolute inset-0 -m-1 rounded-full bg-gradient-to-br ${gradient} opacity-60 blur-md`}
+                        />
+                        <div
+                          className={`relative flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-gradient-to-br ${gradient} dark:border-gray-900`}
+                        >
+                          <span className="text-2xl font-bold text-white">
+                            {getFirstChar(flock)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <CardTitle className="break-words text-base sm:text-lg">
+                        {flock}
+                      </CardTitle>
+
+                      <div className="mt-2 flex items-center justify-center gap-2">
+                        <Badge variant="brand" dot size="sm">
+                          Coach
+                        </Badge>
+                        <Badge variant="neutral" size="sm">
+                          Flock
+                        </Badge>
+                      </div>
+
+                      <CardDescription className="mt-2">
+                        Tap to manage members &amp; assign workouts.
+                      </CardDescription>
+
+                      <div className="mt-4 w-full text-sm font-semibold text-blue-600 dark:text-blue-400">
+                        Manage flock →
                       </div>
                     </div>
-                    {/* Flock Name */}
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 sm:mb-4 break-words">
-                      {flock}
-                    </h3>
-                    {/* Manage Button */}
-                    <Link
-                      href={`/flocks/manage/${encodeURIComponent(flock)}`}
-                      className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors text-center block"
-                    >
-                      Manage
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
-      <Footer />
-    </div>
+                  </Card>
+                </Link>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      )}
+    </AppShell>
   );
 }
-
-
-
-
-

@@ -5,36 +5,52 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useAuth } from "../../../context/AuthContext";
 import { useRequireAuth } from "../../../hooks/useRequireAuth";
-import ThemeToggle from "../../components/ThemeToggle";
-import Footer from "../../components/Footer";
-import { getProfilePicSrc } from "../../../lib/profile-pic-utils";
 import { apiService } from "../../services/api";
+import {
+  AppShell,
+  Button,
+  Card,
+  CardDescription,
+  CardTitle,
+  Spinner,
+  Textarea,
+} from "../../components/ui";
+
+const IconPlus = (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+  </svg>
+);
+
+const IconCheck = (
+  <svg className="h-12 w-12 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
 
 export default function CreateFlockPage() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [flockName, setFlockName] = useState("");
+  const [flockDescription, setFlockDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [showXAnimation, setShowXAnimation] = useState(false);
+  const reduce = useReducedMotion();
 
   // Require authentication
   useRequireAuth();
 
-  const handleLogout = async () => {
-    await logout();
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!flockName.trim()) {
       setError("Flock name is required");
       return;
@@ -51,7 +67,7 @@ export default function CreateFlockPage() {
 
     try {
       const response = await apiService.createFlock(user.apiKey, flockName.trim());
-      
+
       if (response.status === 200) {
         setSuccess(true);
         // Redirect to flocks page after a short delay
@@ -63,12 +79,12 @@ export default function CreateFlockPage() {
       }
     } catch (err) {
       console.error("Failed to create flock:", err);
-      
+
       // Check if error message indicates duplicate flock name
       const errorMessage = err instanceof Error ? err.message : "Failed to create flock. Please try again.";
-      
+
       // Check for the exact error message from the API
-      if (errorMessage === "This coach already has a flock with this name" || 
+      if (errorMessage === "This coach already has a flock with this name" ||
           errorMessage.includes("This coach already has a flock with this name")) {
         // Show X animation
         setShowXAnimation(true);
@@ -89,132 +105,83 @@ export default function CreateFlockPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+      <AppShell title="Create Flock" maxWidth="lg">
+        <div className="flex items-center justify-center py-24">
+          <Spinner size="lg" variant="brand" />
         </div>
-      </div>
+      </AppShell>
     );
   }
 
-  // Check if user is a coach
   if (user && user.role?.toLowerCase() !== "coach") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <p className="text-lg text-gray-600 dark:text-gray-400">Access denied. This page is for coaches only.</p>
-          <Link href="/dashboard" className="mt-4 text-blue-600 dark:text-blue-400 hover:underline">
+      <AppShell title="Create Flock" maxWidth="md">
+        <Card padding="lg" className="text-center">
+          <p className="text-gray-700 dark:text-gray-300">
+            Access denied. This page is for coaches only.
+          </p>
+          <Link
+            href="/dashboard"
+            className="mt-4 inline-block text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+          >
             Return to Dashboard
           </Link>
-        </div>
-      </div>
+        </Card>
+      </AppShell>
     );
   }
 
+  const previewName = flockName.trim() || "Your flock name";
+  const previewDescription = flockDescription.trim() || "Describe what this flock is for — training block, squad, camp, etc.";
+  const firstChar = (flockName.trim() || "F").charAt(0).toUpperCase();
+
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-          <Link href="/" className="flex items-center gap-2">
-            <Image
-              src="/logo/goosenet_logo.png"
-              alt="GooseNet"
-              width={32}
-              height={32}
-              className="h-8 w-auto"
-            />
-            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">GooseNet</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            {user?.profilePicString && (
-              <img
-                src={getProfilePicSrc(user.profilePicString)}
-                alt={user.userName}
-                referrerPolicy="no-referrer"
-                className="hidden md:block h-10 w-10 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
-              />
-            )}
-            <button
-              onClick={handleLogout}
-              className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Logout
-            </button>
-          </div>
-        </nav>
-      </header>
-
-      {/* Main Content */}
-      <main className="relative flex-1 px-6 py-12 sm:px-6 sm:py-24 overflow-hidden">
-        {/* Glowing purple/blue background effects */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-500/30 dark:bg-purple-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute -top-20 -right-20 w-80 h-80 bg-blue-500/30 dark:bg-blue-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-purple-500/20 dark:from-purple-500/15 dark:via-blue-500/15 dark:to-purple-500/15 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-pink-500/20 dark:bg-pink-500/15 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-500/25 dark:bg-blue-500/15 rounded-full blur-3xl"></div>
-        </div>
-
-        <div className="relative mx-auto max-w-2xl">
-          {/* Header Section */}
-          <div className="mb-8 text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-5xl">
-              Create New Flock
-            </h1>
-            <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-              Create a new group to organize your athletes
-            </p>
-          </div>
-
-          {/* Form Card */}
-          <div className="relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 sm:p-8">
+    <AppShell
+      title="Create Flock"
+      subtitle="Group athletes together to plan and assign workouts as one unit."
+      gradientTitle
+      maxWidth="lg"
+    >
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        {/* Form */}
+        <div className="lg:col-span-3">
+          <Card variant="default" padding="lg">
             {success ? (
-              <div className="text-center py-8">
-                <div className="mb-4">
-                  <svg
-                    className="mx-auto h-16 w-16 text-green-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
+              <motion.div
+                initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+                animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                className="py-6 text-center"
+              >
+                <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-teal-500/10 ring-1 ring-inset ring-teal-500/30">
+                  {IconCheck}
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Flock Created Successfully!
+                <h3 className="display-heading text-2xl font-bold tracking-tight text-gradient-brand">
+                  Flock created!
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Redirecting to flocks page...
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  Redirecting you to your flocks…
                 </p>
-              </div>
+                <div className="mt-4 flex justify-center">
+                  <Spinner size="sm" variant="brand" />
+                </div>
+              </motion.div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Error Message */}
+              <form onSubmit={handleSubmit} className="space-y-5">
                 {error && (
-                  <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
-                    <p className="text-red-800 dark:text-red-200">{error}</p>
+                  <div className="rounded-xl border border-rose-500/30 bg-rose-50 p-3 text-sm text-rose-900 dark:border-rose-400/30 dark:bg-rose-500/10 dark:text-rose-100">
+                    {error}
                   </div>
                 )}
 
-                {/* Flock Name Input */}
-                <div className="relative">
+                {/* Flock name */}
+                <div>
                   <label
                     htmlFor="flockName"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    className="mb-1.5 block text-sm font-medium text-gray-800 dark:text-gray-200"
                   >
-                    Flock Name
+                    Flock name
+                    <span className="ml-0.5 text-rose-500" aria-hidden>*</span>
                   </label>
                   <div className="relative">
                     <input
@@ -227,138 +194,159 @@ export default function CreateFlockPage() {
                         setShowXAnimation(false);
                       }}
                       placeholder="Enter flock name"
-                      className={`w-full rounded-lg border ${
-                        showXAnimation 
-                          ? "border-red-500 dark:border-red-500 animate-shake" 
-                          : "border-gray-300 dark:border-gray-600"
-                      } bg-white dark:bg-gray-900 px-4 py-3 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 transition-colors`}
+                      className={`w-full rounded-xl border bg-white px-3 h-10 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:ring-2 dark:bg-gray-900/60 dark:text-gray-100 dark:placeholder:text-gray-500 ${
+                        showXAnimation
+                          ? "border-rose-500 animate-shake focus:ring-rose-500/30"
+                          : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/30 dark:border-white/10 dark:focus:border-blue-400 dark:focus:ring-blue-400/30"
+                      }`}
                       required
                       disabled={isSubmitting}
                       autoFocus
                     />
                     {/* X Animation Overlay */}
-                    {showXAnimation && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="animate-x-popup">
+                    <AnimatePresence>
+                      {showXAnimation && (
+                        <motion.div
+                          key="x-overlay"
+                          initial={{ scale: 0, rotate: 0, opacity: 0 }}
+                          animate={{ scale: [0, 1.2, 1], rotate: [0, 180, 360], opacity: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          transition={{ duration: reduce ? 0 : 0.6, ease: [0.68, -0.55, 0.265, 1.55] }}
+                          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+                        >
                           <svg
-                            className="h-12 w-12 text-red-500"
+                            className="h-10 w-10 text-rose-500"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
                             strokeWidth={3}
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M6 18L18 6M6 6l12 12"
-                            />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                           </svg>
-                        </div>
-                      </div>
-                    )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    Choose a descriptive name for your flock (e.g., "Varsity Team", "Marathon Group")
+                  <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    Choose a descriptive name (e.g., &quot;Varsity Team&quot;, &quot;Marathon Group&quot;).
                   </p>
                   {showXAnimation && (
-                    <p className="mt-2 text-sm text-red-600 dark:text-red-400 animate-fade-in">
+                    <motion.p
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="mt-1.5 text-xs text-rose-600 dark:text-rose-400"
+                    >
                       This coach already has a flock with this name
-                    </p>
+                    </motion.p>
                   )}
                 </div>
 
-                {/* Submit Button */}
-                <div className="flex items-center gap-4 pt-4">
-                  <button
+                {/* Description (UI-only preview) */}
+                <Textarea
+                  id="flockDescription"
+                  label="Description (optional)"
+                  placeholder="What's this flock for? Training block, squad, camp, etc."
+                  value={flockDescription}
+                  onChange={(e) => setFlockDescription(e.target.value)}
+                  rows={4}
+                  disabled={isSubmitting}
+                  helperText="Visible only in your preview — can be added to the flock later."
+                />
+
+                <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+                  <Button
                     type="submit"
+                    variant="gradient"
+                    fullWidth
+                    loading={isSubmitting}
                     disabled={isSubmitting || !flockName.trim()}
-                    className="flex-1 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    iconLeft={!isSubmitting ? IconPlus : undefined}
                   >
-                    {isSubmitting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <svg
-                          className="h-5 w-5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 4v16m8-8H4"
-                          />
-                        </svg>
-                        Create Flock
-                      </>
-                    )}
-                  </button>
-                  <Link
-                    href="/flocks"
-                    className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-3 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
-                  >
-                    Cancel
+                    {isSubmitting ? "Creating…" : "Create Flock"}
+                  </Button>
+                  <Link href="/flocks" className="sm:w-auto">
+                    <Button type="button" variant="secondary" fullWidth>
+                      Cancel
+                    </Button>
                   </Link>
                 </div>
               </form>
             )}
+          </Card>
+        </div>
+
+        {/* Live preview */}
+        <div className="lg:col-span-2">
+          <div className="sticky top-24">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-blue-600 dark:text-blue-400">
+              Live preview
+            </div>
+            <motion.div
+              layout
+              initial={reduce ? false : { opacity: 0, y: 8 }}
+              animate={reduce ? undefined : { opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <Card variant="glass" padding="none" className="overflow-hidden">
+                <div className="h-20 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" aria-hidden />
+                <div className="flex flex-col items-center px-5 pb-5 text-center">
+                  <div className="relative -mt-10 mb-3">
+                    <span
+                      aria-hidden
+                      className="absolute inset-0 -m-1 rounded-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 opacity-60 blur-md"
+                    />
+                    <div className="relative flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 dark:border-gray-900">
+                      <motion.span
+                        key={firstChar}
+                        initial={reduce ? false : { scale: 0.6, opacity: 0 }}
+                        animate={reduce ? undefined : { scale: 1, opacity: 1 }}
+                        transition={{ type: "spring", stiffness: 320, damping: 22 }}
+                        className="text-2xl font-bold text-white"
+                      >
+                        {firstChar}
+                      </motion.span>
+                    </div>
+                  </div>
+                  <CardTitle className="break-words text-lg">
+                    <motion.span
+                      key={previewName}
+                      initial={reduce ? false : { opacity: 0, y: 4 }}
+                      animate={reduce ? undefined : { opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {previewName}
+                    </motion.span>
+                  </CardTitle>
+                  <CardDescription className="mt-2 break-words">
+                    {previewDescription}
+                  </CardDescription>
+                  <div className="mt-4 w-full rounded-xl border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-500 dark:border-white/10 dark:text-gray-400">
+                    You&apos;ll be able to add athletes after creating.
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
           </div>
         </div>
-      </main>
-      <Footer />
-      
-      {/* Animation Styles */}
-      <style dangerouslySetInnerHTML={{__html: `
+      </div>
+
+      {/* Keyframe for the shake animation (kept inline because it's only used here). */}
+      <style jsx global>{`
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
           10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
           20%, 40%, 60%, 80% { transform: translateX(4px); }
         }
-        
-        @keyframes x-popup {
-          0% {
-            transform: scale(0) rotate(0deg);
-            opacity: 0;
-          }
-          50% {
-            transform: scale(1.2) rotate(180deg);
-            opacity: 1;
-          }
-          100% {
-            transform: scale(1) rotate(360deg);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(-4px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
         .animate-shake {
           animation: shake 0.5s ease-in-out;
         }
-        
-        .animate-x-popup {
-          animation: x-popup 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        @media (prefers-reduced-motion: reduce) {
+          .animate-shake {
+            animation: none;
+          }
         }
-        
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out;
-        }
-      `}} />
-    </div>
+      `}</style>
+    </AppShell>
   );
 }
-

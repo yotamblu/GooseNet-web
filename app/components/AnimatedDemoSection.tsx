@@ -1,337 +1,644 @@
 /**
- * Animated Product Demo Section
- * Shows GooseNet workflow with animated demo panel
+ * AnimatedDemoSection
+ *
+ * Side-by-side "Coach assigns workout → Athlete syncs from Garmin → Both
+ * review analysis" flow. Coach panel on the left, phone-framed athlete view
+ * on the right, an animated data-flow pipe down the middle.
+ *
+ * The three steps auto-rotate (pause on hover/focus). Respects reduced motion.
  */
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  type Variants,
+} from "framer-motion";
+import {
+  Badge,
+  SectionHeading,
+  fadeUp,
+  inViewOnce,
+  stagger,
+} from "./ui";
+
+type StepId = "assign" | "sync" | "analyze";
+
+type Step = {
+  id: StepId;
+  index: number;
+  coachLabel: string;
+  athleteLabel: string;
+  summary: string;
+};
+
+const STEPS: Step[] = [
+  {
+    id: "assign",
+    index: 1,
+    coachLabel: "Coach assigns workout",
+    athleteLabel: "Incoming from your coach",
+    summary: "Structured intervals are authored once and delivered instantly.",
+  },
+  {
+    id: "sync",
+    index: 2,
+    coachLabel: "Queued for Garmin",
+    athleteLabel: "Synced to your watch",
+    summary: "Workouts land on the athlete's Garmin, ready to execute.",
+  },
+  {
+    id: "analyze",
+    index: 3,
+    coachLabel: "Reviewing performance",
+    athleteLabel: "Session complete",
+    summary: "Coach and athlete see the same metrics — no screenshots.",
+  },
+];
+
+const PANEL_VARIANTS: Variants = {
+  hidden: { opacity: 0, y: 8 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
+  },
+  exit: {
+    opacity: 0,
+    y: -8,
+    transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] },
+  },
+};
 
 export default function AnimatedDemoSection() {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const reduce = useReducedMotion();
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const steps = [
-    {
-      id: "connect",
-      title: "Connect Garmin",
-      description: "Sync your Garmin device in seconds",
-    },
-    {
-      id: "assign",
-      title: "Workout Assigned",
-      description: "Coach assigns structured intervals",
-    },
-    {
-      id: "review",
-      title: "Workout Review",
-      description: "Analyze pace, HR, and performance",
-    },
-  ];
-
-  // Auto-rotate every 4 seconds
   useEffect(() => {
-    if (!isPaused) {
-      intervalRef.current = setInterval(() => {
-        setCurrentStep((prev) => (prev + 1) % steps.length);
-      }, 4000);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    }
-
+    if (paused || reduce) return;
+    timer.current = setInterval(() => {
+      setActive((prev) => (prev + 1) % STEPS.length);
+    }, 4200);
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (timer.current) clearInterval(timer.current);
     };
-  }, [isPaused, steps.length]);
+  }, [paused, reduce]);
 
-  const handleStepClick = (index: number) => {
-    setCurrentStep(index);
-    setIsPaused(true);
-    setTimeout(() => setIsPaused(false), 6000); // Resume after 6 seconds
-  };
+  const handleStep = useCallback((idx: number) => {
+    setActive(idx);
+    setPaused(true);
+    window.setTimeout(() => setPaused(false), 6000);
+  }, []);
+
+  const step = STEPS[active];
 
   return (
-    <section className="bg-gray-50 dark:bg-gray-800 py-24 sm:py-32">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 lg:mx-0 lg:max-w-none lg:grid-cols-2 lg:items-center">
-          {/* Left Column: Copy + Lead Capture */}
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-4xl">
-              See GooseNet in Action
-            </h2>
-            <p className="mt-6 text-lg leading-8 text-gray-700 dark:text-gray-300">
-              Structured workouts, coach athlete collaboration, and Garmin-powered insights. Preview the flow in 30 seconds.
-            </p>
+    <section
+      id="demo"
+      className="relative isolate overflow-hidden bg-gray-50 py-24 sm:py-28 lg:py-32 dark:bg-gray-950"
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-32 left-1/2 h-[520px] w-[min(100%,900px)] -translate-x-1/2 rounded-full bg-gradient-to-br from-blue-500/15 via-purple-500/15 to-teal-400/10 blur-3xl dark:from-blue-500/10 dark:via-purple-500/10 dark:to-teal-400/5"
+      />
 
-            {/* Bullets */}
-            <ul role="list" className="mt-8 space-y-4">
-              <li className="flex gap-x-3">
-                <svg
-                  className="h-6 w-5 flex-none text-blue-600 dark:text-blue-400 mt-0.5"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span className="text-base leading-7 text-gray-700 dark:text-gray-300">
-                  Assign structured running workouts
-                </span>
-              </li>
-              <li className="flex gap-x-3">
-                <svg
-                  className="h-6 w-5 flex-none text-blue-600 dark:text-blue-400 mt-0.5"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span className="text-base leading-7 text-gray-700 dark:text-gray-300">
-                  Sync and execute on Garmin
-                </span>
-              </li>
-              <li className="flex gap-x-3">
-                <svg
-                  className="h-6 w-5 flex-none text-blue-600 dark:text-blue-400 mt-0.5"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span className="text-base leading-7 text-gray-700 dark:text-gray-300">
-                  Review pace, heart rate, elevation, laps
-                </span>
-              </li>
-              <li className="flex gap-x-3">
-                <svg
-                  className="h-6 w-5 flex-none text-blue-600 dark:text-blue-400 mt-0.5"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span className="text-base leading-7 text-gray-700 dark:text-gray-300">
-                  Share clean summaries with your coach/athletes
-                </span>
-              </li>
-            </ul>
+      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          whileInView="show"
+          viewport={inViewOnce}
+        >
+          <motion.div variants={fadeUp}>
+            <SectionHeading
+              center
+              eyebrow="See the loop"
+              title="One workout. One feed. Zero friction."
+              description="Coach assigns a structured session, athlete syncs it to Garmin, both review the same analysis. Preview the full loop below."
+            />
+          </motion.div>
 
-          </div>
-
-          {/* Right Column: Animated Demo Panel */}
-          <div className="lg:pl-8">
-            <div
-              className="relative rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 shadow-2xl"
-              onMouseEnter={() => setIsPaused(true)}
-              onMouseLeave={() => setIsPaused(false)}
-              style={{ minHeight: "500px" }}
-            >
-              {/* App Header */}
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-2">
-                  <Image
-                    src="/logo/goosenet_logo.png"
-                    alt="GooseNet"
-                    width={24}
-                    height={24}
-                    className="h-6 w-auto"
-                  />
-                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">GooseNet</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-gray-400 dark:bg-gray-600"></div>
-                  <div className="h-2 w-2 rounded-full bg-gray-400 dark:bg-gray-600"></div>
-                  <div className="h-2 w-2 rounded-full bg-gray-400 dark:bg-gray-600"></div>
-                </div>
-              </div>
-
-              {/* Sidebar (hidden on mobile) */}
-              <div className="hidden lg:block absolute left-6 top-24 bottom-6 w-16 border-r border-gray-200 dark:border-gray-700">
-                <div className="space-y-4 pt-4">
-                  <div className="h-8 w-8 rounded-lg bg-blue-600"></div>
-                  <div className="h-8 w-8 rounded-lg bg-gray-300 dark:bg-gray-700"></div>
-                  <div className="h-8 w-8 rounded-lg bg-gray-300 dark:bg-gray-700"></div>
-                  <div className="h-8 w-8 rounded-lg bg-gray-300 dark:bg-gray-700"></div>
-                </div>
-              </div>
-
-              {/* Main Content Area */}
-              <div className="lg:ml-20">
+          {/* Flow */}
+          <div
+            className="relative mt-12 grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[1fr_auto_1fr] lg:gap-8"
+            onMouseEnter={() => setPaused(true)}
+            onMouseLeave={() => setPaused(false)}
+            onFocus={() => setPaused(true)}
+            onBlur={() => setPaused(false)}
+          >
+            {/* COACH */}
+            <motion.div variants={fadeUp} className="relative">
+              <PanelFrame label="Coach" accent="blue">
                 <AnimatePresence mode="wait">
-                  {currentStep === 0 && (
-                    <motion.div
-                      key="connect"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Connect Garmin</h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Sync your device</p>
-                          </div>
-                          <div className="h-12 w-12 rounded-lg bg-blue-600 flex items-center justify-center">
-                            <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
-                            </svg>
-                          </div>
-                        </div>
-                        <div className="mt-6 p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700/50">
-                          <div className="flex items-center gap-3">
-                            <svg className="h-5 w-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            <div>
-                              <p className="text-sm font-medium text-green-800 dark:text-green-300">Garmin Forerunner 945 Connected</p>
-                              <p className="text-xs text-green-600 dark:text-green-400/80 mt-0.5">Last synced: Just now</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {currentStep === 1 && (
-                    <motion.div
-                      key="assign"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="space-y-4">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Workout Assigned</h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">Interval Training - 5x1km</p>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="rounded-lg bg-blue-600/20 border border-blue-500/30 p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-blue-300">Warm-up</span>
-                              <span className="text-xs text-blue-400">10 min</span>
-                            </div>
-                            <div className="h-2 bg-blue-500/30 rounded-full"></div>
-                          </div>
-                          <div className="rounded-lg bg-blue-600/20 border border-blue-500/30 p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-blue-300">Interval 1</span>
-                              <span className="text-xs text-blue-400">4:00/km pace</span>
-                            </div>
-                            <div className="h-2 bg-blue-500/30 rounded-full"></div>
-                          </div>
-                          <div className="rounded-lg bg-gray-700/50 border border-gray-600/50 p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-gray-300">Recovery</span>
-                              <span className="text-xs text-gray-400">2 min</span>
-                            </div>
-                            <div className="h-2 bg-gray-600/30 rounded-full"></div>
-                          </div>
-                          <div className="rounded-lg bg-blue-600/20 border border-blue-500/30 p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-blue-300">Interval 2</span>
-                              <span className="text-xs text-blue-400">4:00/km pace</span>
-                            </div>
-                            <div className="h-2 bg-blue-500/30 rounded-full"></div>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {currentStep === 2 && (
-                    <motion.div
-                      key="review"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="space-y-4">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-100 mb-1">Workout Review</h3>
-                          <p className="text-sm text-gray-400">Completed: Interval Training</p>
-                        </div>
-                        <div className="rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4">
-                          <div className="flex items-end justify-around h-32 gap-2">
-                            {[60, 75, 85, 70, 90, 80, 95].map((height, i) => (
-                              <div
-                                key={i}
-                                className="flex-1 bg-blue-600 rounded-t transition-all"
-                                style={{ height: `${height}%` }}
-                                aria-label={`Bar ${i + 1}: ${height}%`}
-                              ></div>
-                            ))}
-                          </div>
-                          <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-                            <div>
-                              <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">4:12</div>
-                              <div className="text-xs text-gray-600 dark:text-gray-400">Avg Pace</div>
-                            </div>
-                            <div>
-                              <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">165</div>
-                              <div className="text-xs text-gray-600 dark:text-gray-400">Avg HR</div>
-                            </div>
-                            <div>
-                              <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">5.2km</div>
-                              <div className="text-xs text-gray-600 dark:text-gray-400">Distance</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
+                  <motion.div
+                    key={step.id}
+                    variants={PANEL_VARIANTS}
+                    initial="hidden"
+                    animate="show"
+                    exit="exit"
+                  >
+                    <CoachScene step={step} />
+                  </motion.div>
                 </AnimatePresence>
-              </div>
+              </PanelFrame>
+            </motion.div>
 
-              {/* Step Indicators */}
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
-                {steps.map((_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => handleStepClick(index)}
-                    className={`h-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                      currentStep === index
-                        ? "w-8 bg-blue-600"
-                        : "w-2 bg-gray-600 hover:bg-gray-500"
-                    }`}
-                    aria-label={`Go to step ${index + 1}: ${steps[index].title}`}
-                  />
-                ))}
-              </div>
-            </div>
+            {/* DATA PIPE */}
+            <motion.div
+              variants={fadeUp}
+              className="relative hidden items-center justify-center lg:flex"
+            >
+              <DataPipe reduce={!!reduce} activeId={step.id} />
+            </motion.div>
+
+            {/* ATHLETE */}
+            <motion.div variants={fadeUp} className="relative">
+              <PhoneFrame>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={step.id}
+                    variants={PANEL_VARIANTS}
+                    initial="hidden"
+                    animate="show"
+                    exit="exit"
+                  >
+                    <AthleteScene step={step} />
+                  </motion.div>
+                </AnimatePresence>
+              </PhoneFrame>
+            </motion.div>
           </div>
-        </div>
+
+          {/* Step indicators + caption */}
+          <motion.div variants={fadeUp} className="mt-10 flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2" role="tablist" aria-label="Demo steps">
+              {STEPS.map((s, idx) => {
+                const isActive = idx === active;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => handleStep(idx)}
+                    className={`group flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
+                      isActive
+                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-purple-500/30"
+                        : "bg-white/70 text-gray-600 ring-1 ring-inset ring-gray-200 hover:text-gray-900 dark:bg-white/5 dark:text-gray-400 dark:ring-white/10 dark:hover:text-gray-100"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-gray-200 text-gray-700 group-hover:bg-gray-300 dark:bg-white/10 dark:text-gray-300"
+                      }`}
+                    >
+                      {s.index}
+                    </span>
+                    <span className="hidden sm:inline">{s.coachLabel}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p
+              key={step.id + "-cap"}
+              className="max-w-lg text-center text-sm text-gray-600 dark:text-gray-400"
+            >
+              {step.summary}
+            </p>
+          </motion.div>
+        </motion.div>
       </div>
     </section>
   );
 }
 
+/* --------------------------------------------------------------------- */
+/* Shared frames                                                          */
+/* --------------------------------------------------------------------- */
+
+function PanelFrame({
+  label,
+  accent,
+  children,
+}: {
+  label: string;
+  accent: "blue" | "purple";
+  children: React.ReactNode;
+}) {
+  const dot =
+    accent === "blue"
+      ? "bg-blue-500 shadow-[0_0_0_4px_rgba(59,130,246,0.15)]"
+      : "bg-purple-500 shadow-[0_0_0_4px_rgba(168,85,247,0.15)]";
+
+  return (
+    <div className="glass-surface relative h-full min-h-[420px] overflow-hidden rounded-2xl shadow-xl">
+      <div className="flex items-center justify-between border-b border-white/40 px-4 py-3 dark:border-white/10">
+        <div className="flex items-center gap-2">
+          <span className={`h-2 w-2 rounded-full ${dot}`} aria-hidden />
+          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-700 dark:text-gray-200">
+            {label}
+          </span>
+        </div>
+        <div className="flex items-center gap-1" aria-hidden>
+          <span className="h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-white/15" />
+          <span className="h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-white/15" />
+          <span className="h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-white/15" />
+        </div>
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  );
+}
+
+function PhoneFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative mx-auto h-full min-h-[420px] w-full max-w-[320px]">
+      <div className="relative h-full rounded-[2.2rem] bg-gradient-to-b from-gray-900 to-black p-2 shadow-2xl ring-1 ring-white/10">
+        <div className="relative h-full overflow-hidden rounded-[1.7rem] bg-white dark:bg-gray-950">
+          {/* Notch */}
+          <div className="absolute left-1/2 top-2 z-10 h-5 w-20 -translate-x-1/2 rounded-full bg-black/80" />
+          {/* Status bar */}
+          <div className="flex items-center justify-between px-5 pt-2 text-[10px] font-semibold text-gray-900 dark:text-gray-100">
+            <span>9:41</span>
+            <span className="flex items-center gap-1 opacity-60">
+              <span className="h-1.5 w-1.5 rounded-full bg-current" />
+              <span className="h-1.5 w-1.5 rounded-full bg-current" />
+              <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            </span>
+          </div>
+          <div className="px-4 pb-5 pt-4">{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------------- */
+/* Data pipe (middle)                                                     */
+/* --------------------------------------------------------------------- */
+
+function DataPipe({ reduce, activeId }: { reduce: boolean; activeId: StepId }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center">
+      <div className="relative h-64 w-px overflow-visible">
+        <div className="absolute inset-0 w-px bg-gradient-to-b from-blue-500/0 via-blue-500/60 to-purple-500/0 dark:via-blue-400/50" />
+        {!reduce &&
+          [0, 1, 2].map((i) => (
+            <motion.span
+              key={i + activeId}
+              aria-hidden
+              initial={{ y: 0, opacity: 0 }}
+              animate={{ y: 256, opacity: [0, 1, 1, 0] }}
+              transition={{
+                duration: 2.2,
+                delay: i * 0.55,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              className="absolute left-1/2 -translate-x-1/2"
+            >
+              <span className="block h-2 w-2 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 shadow-[0_0_12px_rgba(99,102,241,0.7)]" />
+            </motion.span>
+          ))}
+      </div>
+      <div className="mt-4 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+        <svg
+          className="h-3.5 w-3.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M13 5l7 7-7 7M4 12h16"
+          />
+        </svg>
+        Live sync
+      </div>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------------- */
+/* Scene content                                                          */
+/* --------------------------------------------------------------------- */
+
+function CoachScene({ step }: { step: Step }) {
+  if (step.id === "assign") {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
+              Workout library
+            </p>
+            <h4 className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
+              Tempo + Repeats
+            </h4>
+          </div>
+          <Badge variant="brand" size="sm">
+            Structured
+          </Badge>
+        </div>
+        <ul className="space-y-2 rounded-xl border border-gray-200/80 bg-white/70 p-3 text-xs text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
+          <li className="flex gap-2">
+            <span className="text-gray-400">1.</span>Warmup 10:00 easy
+          </li>
+          <li className="flex gap-2">
+            <span className="text-gray-400">2.</span>
+            5 × (400m @ 3:45–4:00/km, 200m jog)
+          </li>
+          <li className="flex gap-2">
+            <span className="text-gray-400">3.</span>Cooldown 10:00
+          </li>
+        </ul>
+        <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-3 py-2 text-xs font-semibold text-white shadow-md shadow-purple-500/25">
+          <span>Assign to Noa Levi · Tue</span>
+          <span className="inline-flex items-center gap-1">
+            Send
+            <svg
+              className="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M5 12h14M13 5l7 7-7 7"
+              />
+            </svg>
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (step.id === "sync") {
+    return (
+      <div className="space-y-4">
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
+          Athlete pipeline
+        </p>
+        <div className="space-y-2">
+          {[
+            { name: "Noa Levi", status: "Synced", color: "success" as const },
+            { name: "Sarah Chen", status: "Queued", color: "brand" as const },
+            { name: "Mike Johnson", status: "Synced", color: "success" as const },
+          ].map((row) => (
+            <div
+              key={row.name}
+              className="flex items-center justify-between rounded-xl border border-gray-200/70 bg-white/70 px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
+            >
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-xs font-bold text-white">
+                  {row.name[0]}
+                </span>
+                <span className="text-xs font-medium text-gray-800 dark:text-gray-200">
+                  {row.name}
+                </span>
+              </div>
+              <Badge variant={row.color} size="sm" dot>
+                {row.status}
+              </Badge>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 rounded-xl border border-teal-500/30 bg-teal-50/60 px-3 py-2 text-xs font-medium text-teal-700 dark:border-teal-400/20 dark:bg-teal-500/10 dark:text-teal-300">
+          <svg
+            className="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          3 workouts delivered to Garmin
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
+            Session · Noa
+          </p>
+          <h4 className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
+            Tempo + Repeats
+          </h4>
+        </div>
+        <Badge variant="success" size="sm" dot>
+          Completed
+        </Badge>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { k: "Distance", v: "5.2", u: "km" },
+          { k: "Avg Pace", v: "4:17", u: "/km" },
+          { k: "Avg HR", v: "165", u: "bpm" },
+        ].map((m) => (
+          <div
+            key={m.k}
+            className="rounded-xl border border-gray-200/80 bg-white/70 p-2.5 dark:border-white/10 dark:bg-white/5"
+          >
+            <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400">
+              {m.k}
+            </div>
+            <div className="mt-0.5 flex items-baseline gap-1">
+              <span className="text-base font-bold text-gray-900 dark:text-gray-100">
+                {m.v}
+              </span>
+              <span className="text-[10px] text-gray-500">{m.u}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-xl border border-gray-200/80 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
+        <div className="mb-2 flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+          <span>Pace</span>
+          <span>min/km</span>
+        </div>
+        <svg className="h-8 w-full" viewBox="0 0 100 30" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="paceGrad" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%" stopColor="#3b82f6" />
+              <stop offset="100%" stopColor="#a855f7" />
+            </linearGradient>
+          </defs>
+          <motion.polyline
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+            points="0,18 12,14 24,10 36,16 48,8 60,12 72,6 84,10 100,4"
+            fill="none"
+            stroke="url(#paceGrad)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+function AthleteScene({ step }: { step: Step }) {
+  if (step.id === "assign") {
+    return (
+      <div className="space-y-3">
+        <Badge variant="brand" size="sm" dot>
+          New from Coach
+        </Badge>
+        <div className="rounded-2xl border border-gray-200/80 p-3 dark:border-white/10">
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
+            Tuesday · Tempo + Repeats
+          </p>
+          <div className="mt-3 space-y-2">
+            {[
+              { label: "Warm-up", pct: 30, tone: "gray" as const },
+              { label: "Interval 1", pct: 90, tone: "blue" as const },
+              { label: "Recovery", pct: 25, tone: "gray" as const },
+              { label: "Interval 2", pct: 90, tone: "blue" as const },
+              { label: "Cool-down", pct: 35, tone: "gray" as const },
+            ].map((seg) => (
+              <div key={seg.label} className="space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-gray-600 dark:text-gray-400">
+                  <span>{seg.label}</span>
+                </div>
+                <motion.div
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                  className={`h-1.5 origin-left rounded-full ${
+                    seg.tone === "blue"
+                      ? "bg-gradient-to-r from-blue-500 to-purple-500"
+                      : "bg-gray-300 dark:bg-white/10"
+                  }`}
+                  style={{ width: `${seg.pct}%` }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+        <button className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-3 py-2 text-xs font-semibold text-white shadow-md shadow-purple-500/30">
+          Send to my Garmin
+        </button>
+      </div>
+    );
+  }
+
+  if (step.id === "sync") {
+    return (
+      <div className="flex flex-col items-center justify-center space-y-4 pt-4">
+        <div className="relative">
+          <motion.div
+            animate={{ scale: [1, 1.08, 1], opacity: [0.7, 1, 0.7] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 blur-2xl"
+          />
+          <div className="relative flex h-28 w-28 items-center justify-center rounded-full border border-gray-200 bg-white dark:border-white/10 dark:bg-gray-900">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-white shadow-lg">
+              <svg
+                className="h-9 w-9"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Synced to Forerunner 965
+          </p>
+          <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+            Workout on wrist · ready when you are
+          </p>
+        </div>
+        <Badge variant="success" size="sm" dot>
+          Garmin connected
+        </Badge>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+            Activity
+          </p>
+          <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Tuesday session
+          </h4>
+        </div>
+        <Badge variant="success" size="sm">
+          PR
+        </Badge>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { k: "Pace", v: "4:17" },
+          { k: "HR", v: "165" },
+          { k: "Dist", v: "5.2km" },
+          { k: "Time", v: "22:15" },
+        ].map((m) => (
+          <div
+            key={m.k}
+            className="rounded-xl border border-gray-200/80 bg-white/70 p-2 dark:border-white/10 dark:bg-white/5"
+          >
+            <div className="text-[10px] uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400">
+              {m.k}
+            </div>
+            <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
+              {m.v}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-xl border border-gray-200/80 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
+        <div className="flex items-end gap-1 pt-1" aria-hidden>
+          {[55, 70, 82, 65, 90, 78, 95, 72].map((h, i) => (
+            <motion.span
+              key={i}
+              initial={{ height: 0 }}
+              animate={{ height: `${h}%` }}
+              transition={{
+                duration: 0.6,
+                delay: i * 0.04,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="block w-full rounded-sm bg-gradient-to-t from-blue-500 to-purple-500"
+              style={{ minHeight: 6, maxHeight: 48 }}
+            />
+          ))}
+        </div>
+        <p className="mt-2 text-[10px] text-gray-500 dark:text-gray-400">
+          Lap pace consistency
+        </p>
+      </div>
+    </div>
+  );
+}

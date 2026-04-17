@@ -5,16 +5,27 @@
 
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, Suspense } from "react";
-import { useParams, useSearchParams } from "next/navigation";
-import { useTheme } from "next-themes";
-import ThemeToggle from "../../components/ThemeToggle";
-import Footer from "../../components/Footer";
+import { useState, useEffect, Suspense, useMemo } from "react";
+import { useParams } from "next/navigation";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { apiService } from "../../services/api";
 import { useAuth } from "../../../context/AuthContext";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  AppShell,
+  Badge,
+  Button,
+  Card,
+  Label,
+  SectionHeading,
+  Skeleton,
+  Spinner,
+  StatTile,
+  Textarea,
+  fadeUp,
+  stagger,
+  inViewOnce,
+} from "../../components/ui";
 
 interface WorkoutDrill {
   drillName: string;
@@ -40,16 +51,14 @@ interface StrengthWorkoutData {
 }
 
 function StrengthWorkoutDetailPageContent() {
-  const { theme } = useTheme();
   const { user } = useAuth();
   const params = useParams();
-  const searchParams = useSearchParams();
   const workoutId = params?.id as string;
-  
+  const reduce = useReducedMotion();
+
   const isCoach = user?.role?.toLowerCase() === "coach";
   const isAthlete = user?.role?.toLowerCase() === "athlete";
-  
-  // Build back URL - always go to dashboard
+
   const backUrl = "/dashboard";
 
   const [workoutData, setWorkoutData] = useState<StrengthWorkoutData | null>(null);
@@ -57,8 +66,7 @@ function StrengthWorkoutDetailPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
-  
-  // Review state for athletes
+
   const [reviewContent, setReviewContent] = useState("");
   const [difficultyLevel, setDifficultyLevel] = useState(5);
   const [isEditingReview, setIsEditingReview] = useState(false);
@@ -80,8 +88,7 @@ function StrengthWorkoutDetailPageContent() {
 
         if (response.data) {
           setWorkoutData(response.data);
-          
-          // If athlete, check if they have an existing review
+
           if (isAthlete && user?.userName && response.data.workoutReviews) {
             const existingReview = response.data.workoutReviews[user.userName];
             if (existingReview) {
@@ -135,13 +142,12 @@ function StrengthWorkoutDetailPageContent() {
         setShowSuccessToast(true);
         setIsEditingReview(false);
         setHasExistingReview(true);
-        
-        // Refresh workout data to get updated reviews
+
         const refreshResponse = await apiService.getStrengthWorkout<StrengthWorkoutData>(workoutId);
         if (refreshResponse.data) {
           setWorkoutData(refreshResponse.data);
         }
-        
+
         setTimeout(() => {
           setShowSuccessToast(false);
         }, 3000);
@@ -160,53 +166,47 @@ function StrengthWorkoutDetailPageContent() {
     setIsEditingReview(true);
   };
 
+  const totals = useMemo(() => {
+    if (!workoutData?.workoutDrills) return { drills: 0, sets: 0, reps: 0 };
+    const drills = workoutData.workoutDrills.length;
+    const sets = workoutData.workoutDrills.reduce((s, d) => s + (d.drillSets || 0), 0);
+    const reps = workoutData.workoutDrills.reduce((s, d) => s + (d.drillSets || 0) * (d.drillReps || 0), 0);
+    return { drills, sets, reps };
+  }, [workoutData]);
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading workout...</p>
+      <AppShell title="Strength Workout" subtitle="Loading…" maxWidth="lg">
+        <div className="space-y-6">
+          <Card padding="lg" className="space-y-4">
+            <Skeleton h={28} w="60%" />
+            <Skeleton h={14} w="30%" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <Skeleton h={96} />
+              <Skeleton h={96} />
+              <Skeleton h={96} />
+            </div>
+          </Card>
+          <Card padding="md" className="space-y-3">
+            <Skeleton h={14} w="80%" />
+            <Skeleton h={14} w="70%" />
+            <Skeleton h={14} w="60%" />
+          </Card>
         </div>
-      </div>
+      </AppShell>
     );
   }
 
   if (error && !workoutData) {
     return (
-      <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
-        <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-          <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-            <Link href={backUrl} className="flex items-center gap-2">
-              <Image
-                src="/logo/goosenet_logo.png"
-                alt="GooseNet"
-                width={32}
-                height={32}
-                className="h-8 w-auto"
-              />
-              <span className="text-xl font-bold text-gray-900 dark:text-gray-100">GooseNet</span>
-            </Link>
-            <div className="flex items-center gap-4">
-              <ThemeToggle />
-            </div>
-          </nav>
-        </header>
-        <main className="flex-1 flex items-center justify-center px-6 py-12">
-          <div className="text-center">
-            <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
-            <Link
-              href={backUrl}
-              className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back to Dashboard
-            </Link>
-          </div>
-        </main>
-        <Footer />
-      </div>
+      <AppShell title="Workout unavailable" maxWidth="md">
+        <Card padding="lg" className="text-center">
+          <p className="text-rose-600 dark:text-rose-400 mb-4">{error}</p>
+          <Link href={backUrl}>
+            <Button variant="secondary">Back to Dashboard</Button>
+          </Link>
+        </Card>
+      </AppShell>
     );
   }
 
@@ -216,313 +216,260 @@ function StrengthWorkoutDetailPageContent() {
 
   const reviews = workoutData.workoutReviews || {};
   const reviewEntries = Object.entries(reviews);
-  const athleteReview = isAthlete && user?.userName ? reviews[user.userName] : null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-          <Link href={backUrl} className="flex items-center gap-2">
-            <Image
-              src="/logo/goosenet_logo.png"
-              alt="GooseNet"
-              width={32}
-              height={32}
-              className="h-8 w-auto"
-            />
-            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">GooseNet</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-          </div>
-        </nav>
-      </header>
-
-      {/* Main Content */}
-      <main className="relative flex-1 px-6 py-12 sm:px-6 sm:py-24 overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-500/30 dark:bg-purple-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute -top-20 -right-20 w-80 h-80 bg-blue-500/30 dark:bg-blue-500/20 rounded-full blur-3xl"></div>
-        </div>
-
-        <div className="relative mx-auto max-w-4xl">
-          {/* Back Button */}
-          <div className="mb-6">
-            <Link
-              href={backUrl}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+    <AppShell
+      eyebrow={workoutData.workoutDate || undefined}
+      title={workoutData.workoutName || "Strength Workout"}
+      subtitle={workoutData.workoutDescription || undefined}
+      actions={
+        <Link href={backUrl}>
+          <Button variant="ghost" size="sm">
+            <span className="inline-flex items-center gap-1.5">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
               Back to Dashboard
-            </Link>
-          </div>
+            </span>
+          </Button>
+        </Link>
+      }
+      maxWidth="lg"
+    >
+      {/* Error */}
+      {error && (
+        <Card padding="sm" className="mb-6 border-rose-200 dark:border-rose-400/30 bg-rose-50 dark:bg-rose-500/5">
+          <p className="text-sm text-rose-700 dark:text-rose-300">{error}</p>
+        </Card>
+      )}
 
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
-              <p className="text-red-800 dark:text-red-200">{error}</p>
-            </div>
+      {/* Success toast */}
+      <AnimatePresence>
+        {showSuccessToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mb-6 rounded-2xl border border-teal-200 dark:border-teal-400/30 bg-teal-50 dark:bg-teal-500/10 p-4 flex items-center gap-2"
+          >
+            <svg className="h-5 w-5 text-teal-600 dark:text-teal-300 animate-check" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            <p className="text-sm font-medium text-teal-700 dark:text-teal-200">Review saved successfully!</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Hero */}
+      <Card variant="glass" padding="lg" className="mb-8">
+        <div className="flex flex-wrap items-center gap-2 mb-5">
+          <Badge variant="info" dot>
+            Strength
+          </Badge>
+          {workoutData.coachName && (
+            <Badge variant="neutral">Coach: {workoutData.coachName}</Badge>
           )}
+        </div>
 
-          {/* Success Toast */}
-          <AnimatePresence>
-            {showSuccessToast && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="mb-6 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 flex items-center gap-2"
-              >
-                <svg className="h-5 w-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <p className="text-green-800 dark:text-green-200">Review edited successfully!</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatTile label="Drills" value={totals.drills} accent="purple" />
+          <StatTile label="Total Sets" value={totals.sets} accent="brand" />
+          <StatTile label="Total Reps" value={totals.reps} accent="teal" />
+        </div>
+      </Card>
 
-          {/* Workout Header */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 mb-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-600">
-                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                  {workoutData.workoutName}
-                </h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {workoutData.workoutDate}
-                  {workoutData.coachName && ` • Coach: ${workoutData.coachName}`}
-                </p>
-              </div>
-            </div>
-
-            {workoutData.workoutDescription && (
-              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <p className="text-base text-gray-700 dark:text-gray-300 leading-relaxed">
-                  {workoutData.workoutDescription}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Drills Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              Drills
-            </h2>
-            <div className="space-y-3">
-              {workoutData.workoutDrills && workoutData.workoutDrills.length > 0 ? (
-                workoutData.workoutDrills.map((drill, index) => (
-                  <div
-                    key={index}
-                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+      {/* Drills */}
+      <section className="mb-10">
+        <SectionHeading title="Exercises" description="Each drill with its set × rep prescription" />
+        {workoutData.workoutDrills && workoutData.workoutDrills.length > 0 ? (
+          <motion.div
+            variants={reduce ? undefined : stagger}
+            initial={reduce ? undefined : "hidden"}
+            whileInView={reduce ? undefined : "show"}
+            viewport={inViewOnce}
+            className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+          >
+            {workoutData.workoutDrills.map((drill, idx) => (
+              <motion.div key={idx} variants={reduce ? undefined : fadeUp}>
+                <Card padding="md" interactive>
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-fuchsia-500/20 text-purple-600 dark:text-purple-300 font-semibold">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
                         {drill.drillName}
                       </h3>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        {drill.drillSets} sets × {drill.drillReps} reps
-                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        <span className="font-semibold text-gray-900 dark:text-gray-100">{drill.drillSets}</span> sets
+                        <span className="mx-1.5 text-gray-400">×</span>
+                        <span className="font-semibold text-gray-900 dark:text-gray-100">{drill.drillReps}</span> reps
+                      </p>
                     </div>
                   </div>
-                ))
-              ) : (
-                <p className="text-gray-500 dark:text-gray-400">No drills available</p>
-              )}
-            </div>
-          </div>
 
-          {/* Athletes Section (for coaches) */}
-          {isCoach && workoutData.athleteNames && workoutData.athleteNames.length > 0 && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                Athletes
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {workoutData.athleteNames.map((athlete, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-sm font-medium"
-                  >
-                    {athlete}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Reviews Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              Reviews
-            </h2>
-
-            {isCoach ? (
-              /* Coach View: Show all reviews or "Review Pending" */
-              <div className="space-y-4">
-                {reviewEntries.length > 0 ? (
-                  reviewEntries.map(([athleteName, review]) => (
-                    <div
-                      key={athleteName}
-                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                          {athleteName}
-                        </h3>
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          Difficulty: {review.difficultyLevel}/10
-                        </span>
-                      </div>
-                      <p className="text-gray-700 dark:text-gray-300">{review.reviewContent}</p>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900/50">
-                    <svg
-                      className="mx-auto h-12 w-12 text-gray-400 mb-3"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <p className="text-gray-600 dark:text-gray-400 font-medium">Review Pending</p>
-                  </div>
-                )}
-              </div>
-            ) : isAthlete ? (
-              /* Athlete View: Show/edit own review */
-              <div className="space-y-4">
-                {hasExistingReview && !isEditingReview ? (
-                  /* Display existing review with edit button */
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">Your Review</h3>
-                      <div className="flex items-center gap-4">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          Difficulty: {difficultyLevel}/10
-                        </span>
-                        <button
-                          onClick={handleEditReview}
-                          className="px-4 py-2 text-sm font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-                        >
-                          Edit
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-gray-700 dark:text-gray-300">{reviewContent}</p>
-                  </div>
-                ) : (
-                  /* Review form (new or editing) */
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                      {hasExistingReview ? "Edit Your Review" : "Write a Review"}
-                    </h3>
-                    
-                    <div className="space-y-4">
-                      {/* Difficulty Level Slider */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Difficulty Level: {difficultyLevel}/10
-                        </label>
-                        <input
-                          type="range"
-                          min="1"
-                          max="10"
-                          value={difficultyLevel}
-                          onChange={(e) => setDifficultyLevel(parseInt(e.target.value))}
-                          className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                        />
-                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          <span>1</span>
-                          <span>10</span>
-                        </div>
-                      </div>
-
-                      {/* Review Content */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Review Content
-                        </label>
-                        <textarea
-                          value={reviewContent}
-                          onChange={(e) => setReviewContent(e.target.value)}
-                          rows={4}
-                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-400"
-                          placeholder="Share your thoughts about this workout..."
-                        />
-                      </div>
-
-                      {/* Submit Button */}
-                      <button
-                        onClick={handleSubmitReview}
-                        disabled={isSubmittingReview || !reviewContent.trim()}
-                        className="w-full px-6 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  {/* Per-set grid — visual completion tracker (display-only, no logic changes) */}
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {Array.from({ length: Math.min(drill.drillSets, 20) }).map((_, setIdx) => (
+                      <span
+                        key={setIdx}
+                        className="inline-flex items-center justify-center h-7 min-w-[2rem] px-2 rounded-lg text-[11px] font-semibold text-gray-700 dark:text-gray-300 bg-white/70 dark:bg-white/5 border border-gray-200 dark:border-white/10"
                       >
-                        {isSubmittingReview ? (
-                          <>
-                            <svg
-                              className="animate-spin h-4 w-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              ></circle>
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              ></path>
-                            </svg>
-                            Submitting...
-                          </>
-                        ) : (
-                          "Submit Review"
-                        )}
-                      </button>
-                    </div>
+                        {setIdx + 1}×{drill.drillReps}
+                      </span>
+                    ))}
+                    {drill.drillSets > 20 && (
+                      <span className="inline-flex items-center justify-center h-7 px-2 rounded-lg text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                        +{drill.drillSets - 20} more
+                      </span>
+                    )}
                   </div>
-                )}
-              </div>
-            ) : null}
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+        ) : (
+          <Card padding="md">
+            <p className="text-sm text-gray-500 dark:text-gray-400">No drills available.</p>
+          </Card>
+        )}
+      </section>
+
+      {/* Athletes (coach) */}
+      {isCoach && workoutData.athleteNames && workoutData.athleteNames.length > 0 && (
+        <section className="mb-10">
+          <SectionHeading title="Athletes" description="Assigned to this session" />
+          <Card padding="md">
+            <div className="flex flex-wrap gap-2">
+              {workoutData.athleteNames.map((athlete, index) => (
+                <Badge key={index} variant="brand" size="md" dot>
+                  {athlete}
+                </Badge>
+              ))}
+            </div>
+          </Card>
+        </section>
+      )}
+
+      {/* Reviews */}
+      <section>
+        <SectionHeading title="Reviews" description={isAthlete ? "Share how this session felt." : "Feedback from athletes."} />
+
+        {isCoach ? (
+          <div className="space-y-3">
+            {reviewEntries.length > 0 ? (
+              reviewEntries.map(([athleteName, review]) => (
+                <Card key={athleteName} padding="md">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">{athleteName}</h3>
+                    <Badge variant="outline" size="sm">
+                      Difficulty: {review.difficultyLevel}/10
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{review.reviewContent}</p>
+                </Card>
+              ))
+            ) : (
+              <Card padding="lg" className="text-center">
+                <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-500/10 text-gray-500">
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-gray-600 dark:text-gray-400 font-medium">Review Pending</p>
+              </Card>
+            )}
           </div>
-        </div>
-      </main>
-      <Footer />
-    </div>
+        ) : isAthlete ? (
+          <div>
+            {hasExistingReview && !isEditingReview ? (
+              <Card padding="md">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">Your Review</h3>
+                  <div className="flex items-center gap-3">
+                    <Badge variant="outline" size="sm">
+                      Difficulty: {difficultyLevel}/10
+                    </Badge>
+                    <Button size="sm" variant="secondary" onClick={handleEditReview}>
+                      Edit
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{reviewContent}</p>
+              </Card>
+            ) : (
+              <Card padding="md" className="space-y-5">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                  {hasExistingReview ? "Edit Your Review" : "Write a Review"}
+                </h3>
+
+                <div>
+                  <Label htmlFor="difficulty-range" className="mb-2 block">
+                    Difficulty Level:{" "}
+                    <span className="ml-1 font-semibold text-gray-900 dark:text-gray-100">
+                      {difficultyLevel}/10
+                    </span>
+                  </Label>
+                  <input
+                    type="range"
+                    id="difficulty-range"
+                    min="1"
+                    max="10"
+                    value={difficultyLevel}
+                    onChange={(e) => setDifficultyLevel(parseInt(e.target.value))}
+                    className="w-full h-2 bg-gray-200 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-600 dark:accent-blue-400"
+                  />
+                  <div className="flex justify-between text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                    <span>1 · Easy</span>
+                    <span>10 · Crushed me</span>
+                  </div>
+                </div>
+
+                <Textarea
+                  label="Review Content"
+                  value={reviewContent}
+                  onChange={(e) => setReviewContent(e.target.value)}
+                  rows={4}
+                  placeholder="Share your thoughts about this workout..."
+                />
+
+                <div className="flex items-center justify-end gap-2">
+                  {hasExistingReview && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => setIsEditingReview(false)}
+                      disabled={isSubmittingReview}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                  <Button
+                    variant="gradient"
+                    onClick={handleSubmitReview}
+                    disabled={isSubmittingReview || !reviewContent.trim()}
+                    loading={isSubmittingReview}
+                  >
+                    {hasExistingReview ? "Save changes" : "Submit Review"}
+                  </Button>
+                </div>
+              </Card>
+            )}
+          </div>
+        ) : null}
+      </section>
+    </AppShell>
   );
 }
 
 export default function StrengthWorkoutDetailPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0b0f17]">
+          <Spinner size="lg" />
         </div>
-      </div>
-    }>
+      }
+    >
       <StrengthWorkoutDetailPageContent />
     </Suspense>
   );

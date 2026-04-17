@@ -1,72 +1,88 @@
 /**
- * Coach Demo Panel
- * Animated coach workflow demonstration
+ * CoachDemoPanel
+ *
+ * Animated coach workflow: Create → Assign → Review. Auto-advances, pauses on
+ * hover, and lets users click step indicators to jump. Consumed by
+ * ForCoaches as the embedded visual.
  */
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  type Variants,
+} from "framer-motion";
+import { Badge } from "./ui";
+
+type StepId = "create" | "assign" | "review";
+
+const STEPS: { id: StepId; title: string }[] = [
+  { id: "create", title: "Create Structured Workout" },
+  { id: "assign", title: "Assign to Athlete" },
+  { id: "review", title: "Review Completed Session" },
+];
+
+const SCENE_VARIANTS: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
+  },
+  exit: {
+    opacity: 0,
+    y: -8,
+    transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+const PACE_DATA = [4.2, 3.9, 3.8, 3.9, 4.0, 3.8, 3.9, 4.1, 3.8, 4.0];
+const HR_DATA = [145, 160, 165, 162, 168, 165, 163, 170, 165, 168];
+const LAP_DATA = [3.8, 3.9, 3.7, 3.8, 3.9, 3.8, 3.7, 3.9];
 
 export default function CoachDemoPanel() {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const [showToast, setShowToast] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [toast, setToast] = useState(false);
+  const reduce = useReducedMotion();
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const steps = [
-    { id: "create", title: "Create Structured Workout" },
-    { id: "assign", title: "Assign to Athlete" },
-    { id: "review", title: "Review Completed Session" },
-  ];
-
-  // Auto-advance every 4.5 seconds
   useEffect(() => {
-    if (!isPaused) {
-      intervalRef.current = setInterval(() => {
-        setCurrentStep((prev) => (prev + 1) % steps.length);
-        setShowToast(false);
-      }, 4500);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    }
-
+    if (paused || reduce) return;
+    timer.current = setInterval(() => {
+      setActive((p) => (p + 1) % STEPS.length);
+      setToast(false);
+    }, 4500);
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (timer.current) clearInterval(timer.current);
     };
-  }, [isPaused, steps.length]);
+  }, [paused, reduce]);
 
-  const handleStepClick = (index: number) => {
-    setCurrentStep(index);
-    setIsPaused(true);
-    setShowToast(false);
-    setTimeout(() => setIsPaused(false), 6000);
-  };
+  const go = useCallback((idx: number) => {
+    setActive(idx);
+    setToast(false);
+    setPaused(true);
+    window.setTimeout(() => setPaused(false), 6000);
+  }, []);
 
-  const handleAssign = () => {
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-  };
-
-  // Sparkline data for pace and HR
-  const paceData = [4.2, 3.9, 3.8, 3.9, 4.0, 3.8, 3.9, 4.1, 3.8, 4.0];
-  const hrData = [145, 160, 165, 162, 168, 165, 163, 170, 165, 168];
-  const lapData = [3.8, 3.9, 3.7, 3.8, 3.9, 3.8, 3.7, 3.9];
+  const handleAssign = useCallback(() => {
+    setToast(true);
+    window.setTimeout(() => setToast(false), 3000);
+  }, []);
 
   return (
     <div
-      className="relative rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-6 shadow-2xl"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-      style={{ minHeight: "500px" }}
+      className="glass-surface relative overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10"
+      style={{ minHeight: 540 }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
     >
-      {/* App Header */}
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+      {/* Chrome */}
+      <div className="flex items-center justify-between border-b border-white/40 px-4 py-3 dark:border-white/10">
         <div className="flex items-center gap-2">
           <Image
             src="/logo/goosenet_logo.png"
@@ -75,293 +91,356 @@ export default function CoachDemoPanel() {
             height={20}
             className="h-5 w-auto"
           />
-          <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">GooseNet Coach</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-800 dark:text-gray-200">
+            GooseNet Coach
+          </span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-1.5 w-1.5 rounded-full bg-gray-400 dark:bg-gray-600"></div>
-          <div className="h-1.5 w-1.5 rounded-full bg-gray-400 dark:bg-gray-600"></div>
-          <div className="h-1.5 w-1.5 rounded-full bg-gray-400 dark:bg-gray-600"></div>
-        </div>
-      </div>
-
-      {/* Sidebar (hidden on mobile) */}
-      <div className="hidden lg:block absolute left-6 top-20 bottom-24 w-12 border-r border-gray-200 dark:border-gray-700">
-        <div className="space-y-3 pt-3">
-          <div className="h-7 w-7 rounded-lg bg-blue-600"></div>
-          <div className="h-7 w-7 rounded-lg bg-gray-300 dark:bg-gray-700"></div>
-          <div className="h-7 w-7 rounded-lg bg-gray-300 dark:bg-gray-700"></div>
-          <div className="h-7 w-7 rounded-lg bg-gray-300 dark:bg-gray-700"></div>
+        <div className="flex items-center gap-1" aria-hidden>
+          <span className="h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-white/15" />
+          <span className="h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-white/15" />
+          <span className="h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-white/15" />
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="lg:ml-16">
-        <AnimatePresence mode="wait">
-          {/* State A: Create Structured Workout */}
-          {currentStep === 0 && (
-            <motion.div
-              key="create"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-4"
-            >
-              <div>
-                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Create Structured Workout</h3>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Build interval training plans</p>
-              </div>
+      <div className="flex">
+        {/* Sidebar */}
+        <div className="hidden w-14 shrink-0 border-r border-white/40 p-3 dark:border-white/10 sm:block">
+          <div className="flex flex-col gap-2">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 shadow-md shadow-purple-500/25" />
+            <div className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-white/10" />
+            <div className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-white/10" />
+            <div className="h-8 w-8 rounded-lg bg-gray-200 dark:bg-white/10" />
+          </div>
+        </div>
 
-              <div className="rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <input
-                    type="text"
-                    value="Tempo + Repeats"
-                    readOnly
-                    className="text-sm font-medium text-gray-900 dark:text-gray-100 bg-transparent border-none focus:outline-none flex-shrink-0"
-                  />
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-2 py-0.5 text-xs font-medium rounded bg-blue-600/20 dark:bg-blue-600/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 dark:border-blue-500/30 whitespace-nowrap">
-                      STRUCTURED
-                    </span>
-                    <span className="px-2 py-0.5 text-xs font-medium rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 whitespace-nowrap">
-                      RUNNING
-                    </span>
+        {/* Scene */}
+        <div className="relative min-h-[440px] flex-1 p-5">
+          <AnimatePresence mode="wait">
+            {active === 0 && (
+              <motion.div
+                key="create"
+                variants={SCENE_VARIANTS}
+                initial="hidden"
+                animate="show"
+                exit="exit"
+                className="space-y-4"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
+                      Workout builder
+                    </p>
+                    <h3 className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
+                      Tempo + Repeats
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="brand" size="sm">
+                      Structured
+                    </Badge>
+                    <Badge variant="neutral" size="sm">
+                      Running
+                    </Badge>
                   </div>
                 </div>
 
-                <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                  <div className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300">
-                    <span className="text-gray-500 dark:text-gray-500">1.</span>
-                    <span>Warmup 10:00 easy</span>
-                  </div>
-                  <div className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300">
-                    <span className="text-gray-500 dark:text-gray-500">2.</span>
-                    <span>5 x (400m @ 3:45–4:00/km, 200m jog)</span>
-                  </div>
-                  <div className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300">
-                    <span className="text-gray-500 dark:text-gray-500">3.</span>
-                    <span>Cooldown 10:00</span>
-                  </div>
-                </div>
-
-                <button className="w-full mt-4 px-4 py-2 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
-                  Send to Athlete
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* State B: Assign to Athlete */}
-          {currentStep === 1 && (
-            <motion.div
-              key="assign"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-4"
-            >
-              <div>
-                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Assign to Athlete</h3>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Schedule and sync to Garmin</p>
-              </div>
-
-              <div className="rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 space-y-4">
-                <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1.5">Athlete</label>
-                  <select className="w-full px-3 py-2 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option>Noa Levi</option>
-                    <option>Sarah Chen</option>
-                    <option>Mike Johnson</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1.5">Date</label>
-                  <div className="px-3 py-2 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg">
-                    Tue, Jan 14
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
-                  <label className="text-xs text-gray-700 dark:text-gray-300">Sync to Garmin</label>
-                  <div className="relative inline-flex items-center h-5 w-9 bg-blue-600 rounded-full cursor-pointer">
-                    <span className="absolute right-1 h-3 w-3 bg-white rounded-full transition-transform"></span>
-                  </div>
+                <div className="rounded-xl border border-gray-200/80 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
+                  <ul className="space-y-2 text-xs text-gray-700 dark:text-gray-300">
+                    <li className="flex items-start gap-2">
+                      <span className="text-gray-400">1.</span>
+                      <span>Warmup 10:00 easy</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-gray-400">2.</span>
+                      <span>5 × (400m @ 3:45–4:00/km, 200m jog)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-gray-400">3.</span>
+                      <span>Cooldown 10:00</span>
+                    </li>
+                  </ul>
                 </div>
 
                 <button
-                  onClick={handleAssign}
-                  className="w-full mt-4 px-4 py-2 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                  type="button"
+                  className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2.5 text-xs font-semibold text-white shadow-md shadow-purple-500/30 transition-[filter] hover:brightness-110"
                 >
-                  Assign Workout
+                  Send to Athlete
                 </button>
+              </motion.div>
+            )}
 
-                {/* Toast Notification */}
-                <AnimatePresence>
-                  {showToast && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="mt-2 px-3 py-2 text-xs text-green-800 dark:text-green-300 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700/50 rounded-lg"
-                    >
-                      ✓ Assigned and queued for Garmin sync
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          )}
-
-          {/* State C: Review Completed Session */}
-          {currentStep === 2 && (
-            <motion.div
-              key="review"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-4"
-            >
-              <div>
-                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Review Completed Session</h3>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Analyze performance metrics</p>
-              </div>
-
-              <div className="rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 space-y-4">
-                {/* Summary Metrics */}
-                <div className="grid grid-cols-2 gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-                  <div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-0.5">Distance</div>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">5.2 km</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-0.5">Duration</div>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">22:15</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-0.5">Avg Pace</div>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">4:17/km</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-0.5">Avg HR</div>
-                    <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">165 bpm</div>
-                  </div>
-                </div>
-
-                {/* Sparklines */}
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs text-gray-600 dark:text-gray-400">Pace</span>
-                      <span className="text-xs text-gray-500 dark:text-gray-500">min/km</span>
-                    </div>
-                    <svg className="w-full h-8" viewBox="0 0 100 30" preserveAspectRatio="none">
-                      <polyline
-                        points={paceData.map((val, i) => `${(i * 100) / (paceData.length - 1)},${30 - (val - 3.7) * 20}`).join(" ")}
-                        fill="none"
-                        stroke="#3b82f6"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs text-gray-600 dark:text-gray-400">Heart Rate</span>
-                      <span className="text-xs text-gray-500 dark:text-gray-500">bpm</span>
-                    </div>
-                    <svg className="w-full h-8" viewBox="0 0 100 30" preserveAspectRatio="none">
-                      <polyline
-                        points={hrData.map((val, i) => `${(i * 100) / (hrData.length - 1)},${30 - ((val - 140) / 30) * 30}`).join(" ")}
-                        fill="none"
-                        stroke="#ef4444"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Lap Consistency Chart */}
+            {active === 1 && (
+              <motion.div
+                key="assign"
+                variants={SCENE_VARIANTS}
+                initial="hidden"
+                animate="show"
+                exit="exit"
+                className="space-y-4"
+              >
                 <div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Lap Consistency</div>
-                  <div className="flex items-end justify-between h-16 gap-1">
-                    {lapData.map((lap, i) => {
-                      const height = ((lap - 3.7) / 0.3) * 100;
-                      const isFastest = lap === Math.min(...lapData);
-                      return (
-                        <div
-                          key={i}
-                          className={`flex-1 rounded-t transition-all ${
-                            isFastest
-                              ? "bg-blue-600 border-2 border-blue-400"
-                              : "bg-gray-300 dark:bg-gray-700 border border-gray-400 dark:border-gray-600"
-                          }`}
-                          style={{ height: `${Math.max(20, Math.min(100, height))}%` }}
-                          aria-label={`Lap ${i + 1}: ${lap} min/km`}
-                        ></div>
-                      );
-                    })}
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-500 mt-1 text-center">Fastest: 3.7 min/km</div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
+                    Assign workout
+                  </p>
+                  <h3 className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
+                    Schedule &amp; sync to Garmin
+                  </h3>
                 </div>
 
-                {/* Coach Note */}
-                <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                  <div className="text-xs text-gray-600 dark:text-gray-400 mb-1.5">Coach Note</div>
-                  <div className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 rounded border border-gray-300 dark:border-gray-600/50">
-                    Strong pacing on reps 2–4. Next week increase rep count to 6.
+                <div className="space-y-3 rounded-xl border border-gray-200/80 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5">
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-medium text-gray-600 dark:text-gray-400">
+                      Athlete
+                    </label>
+                    <div className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5 dark:text-gray-100">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-[10px] font-bold text-white">
+                        N
+                      </span>
+                      Noa Levi
+                    </div>
                   </div>
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-medium text-gray-600 dark:text-gray-400">
+                      Date
+                    </label>
+                    <div className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5 dark:text-gray-100">
+                      Tue, Jan 14
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-gray-200/70 pt-3 dark:border-white/10">
+                    <span className="text-xs text-gray-700 dark:text-gray-300">
+                      Sync to Garmin
+                    </span>
+                    <div className="relative inline-flex h-5 w-9 items-center rounded-full bg-gradient-to-r from-blue-500 to-purple-500 shadow-inner">
+                      <span className="absolute right-1 block h-3 w-3 rounded-full bg-white" />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAssign}
+                    className="mt-1 w-full rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2.5 text-xs font-semibold text-white shadow-md shadow-purple-500/30 transition-[filter] hover:brightness-110"
+                  >
+                    Assign Workout
+                  </button>
+                  <AnimatePresence>
+                    {toast && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        className="flex items-center gap-2 rounded-lg border border-teal-500/30 bg-teal-50/70 px-3 py-2 text-xs font-medium text-teal-700 dark:border-teal-400/20 dark:bg-teal-500/10 dark:text-teal-300"
+                      >
+                        <svg
+                          className="h-4 w-4"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2.2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        Assigned and queued for Garmin sync
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            )}
+
+            {active === 2 && (
+              <motion.div
+                key="review"
+                variants={SCENE_VARIANTS}
+                initial="hidden"
+                animate="show"
+                exit="exit"
+                className="space-y-4"
+              >
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
+                    Session review
+                  </p>
+                  <h3 className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
+                    Tempo + Repeats · Noa
+                  </h3>
                 </div>
 
-                {/* Garmin Badge */}
-                <div className="flex items-center gap-2 pt-2">
-                  <span className="px-2 py-0.5 text-xs font-medium rounded bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-700/50 flex items-center gap-1">
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Data from Garmin
-                  </span>
+                <div className="space-y-4 rounded-xl border border-gray-200/80 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5">
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { k: "Distance", v: "5.2 km" },
+                      { k: "Duration", v: "22:15" },
+                      { k: "Avg Pace", v: "4:17/km" },
+                      { k: "Avg HR", v: "165 bpm" },
+                    ].map((m) => (
+                      <div key={m.k}>
+                        <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400">
+                          {m.k}
+                        </div>
+                        <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          {m.v}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="space-y-3 border-t border-gray-200/70 pt-3 dark:border-white/10">
+                    <Spark
+                      label="Pace"
+                      unit="min/km"
+                      color="#3b82f6"
+                      data={PACE_DATA}
+                      min={3.7}
+                      max={4.3}
+                    />
+                    <Spark
+                      label="Heart rate"
+                      unit="bpm"
+                      color="#f43f5e"
+                      data={HR_DATA}
+                      min={140}
+                      max={175}
+                    />
+                  </div>
+
+                  <div className="border-t border-gray-200/70 pt-3 dark:border-white/10">
+                    <div className="mb-2 text-[10px] font-medium uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400">
+                      Lap consistency
+                    </div>
+                    <div className="flex items-end gap-1 h-14">
+                      {LAP_DATA.map((lap, i) => {
+                        const min = Math.min(...LAP_DATA);
+                        const height = ((lap - 3.6) / 0.35) * 100;
+                        const isFastest = lap === min;
+                        return (
+                          <motion.div
+                            key={i}
+                            initial={{ scaleY: 0 }}
+                            animate={{ scaleY: 1 }}
+                            transition={{
+                              duration: 0.5,
+                              delay: i * 0.05,
+                              ease: [0.22, 1, 0.36, 1],
+                            }}
+                            className={`w-full origin-bottom rounded-t ${
+                              isFastest
+                                ? "bg-gradient-to-t from-blue-500 to-purple-500"
+                                : "bg-gray-300 dark:bg-white/15"
+                            }`}
+                            style={{ height: `${Math.max(22, Math.min(100, height))}%` }}
+                            aria-label={`Lap ${i + 1}: ${lap} min/km`}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Badge variant="success" size="sm" dot>
+                      Data from Garmin
+                    </Badge>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* Step Indicators */}
-      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-2">
-        {steps.map((_, index) => (
-          <button
-            key={index}
-            type="button"
-            onClick={() => handleStepClick(index)}
-            className={`h-1.5 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-              currentStep === index
-                ? "w-6 bg-blue-600"
-                : "w-1.5 bg-gray-600 hover:bg-gray-500"
-            }`}
-            aria-label={`Go to step ${index + 1}: ${steps[index].title}`}
-          />
-        ))}
-      </div>
-
-      {/* CTA Row */}
-      <div className="absolute bottom-4 left-6 right-6 flex items-center justify-between px-4 py-2.5 bg-gray-100/90 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg border border-gray-300 dark:border-gray-700">
-        <span className="text-xs text-gray-700 dark:text-gray-300">Want this for your team?</span>
+      {/* Footer bar */}
+      <div className="flex items-center justify-between gap-3 border-t border-white/40 px-4 py-3 dark:border-white/10">
+        <div className="flex items-center gap-1.5" role="tablist" aria-label="Coach demo step">
+          {STEPS.map((s, idx) => {
+            const isActive = idx === active;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => go(idx)}
+                className={`h-1.5 rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                  isActive
+                    ? "w-8 bg-gradient-to-r from-blue-500 to-purple-500"
+                    : "w-3 bg-gray-300 hover:bg-gray-400 dark:bg-white/15 dark:hover:bg-white/25"
+                }`}
+                aria-label={`Go to step ${idx + 1}: ${s.title}`}
+              />
+            );
+          })}
+        </div>
         <a
           href="#cta"
-          className="px-3 py-1 text-xs font-semibold text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+          className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-md shadow-purple-500/25 transition-[filter] hover:brightness-110"
         >
-          Join as Coach
+          Join as coach
+          <svg
+            className="h-3 w-3"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.4}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 12h14M13 5l7 7-7 7"
+            />
+          </svg>
         </a>
       </div>
     </div>
   );
 }
 
+function Spark({
+  label,
+  unit,
+  color,
+  data,
+  min,
+  max,
+}: {
+  label: string;
+  unit: string;
+  color: string;
+  data: number[];
+  min: number;
+  max: number;
+}) {
+  const range = max - min || 1;
+  const points = data
+    .map((v, i) => {
+      const x = (i / (data.length - 1)) * 100;
+      const y = 30 - ((v - min) / range) * 28 - 1;
+      return `${x},${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400">
+        <span>{label}</span>
+        <span>{unit}</span>
+      </div>
+      <svg className="h-8 w-full" viewBox="0 0 100 30" preserveAspectRatio="none">
+        <motion.polyline
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+          points={points}
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </div>
+  );
+}

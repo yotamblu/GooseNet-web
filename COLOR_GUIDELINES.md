@@ -1,171 +1,165 @@
-# GooseNet Color Guidelines
+# GooseNet Color & Motion Guidelines
 
-This document defines the color palette used throughout the GooseNet application to ensure consistency across all pages.
+This document defines the palette, surface tokens, motion vocabulary, and shared UI primitives used across the GooseNet app. These are consumed via `app/globals.css` tokens and `app/components/ui/*` primitives.
 
-## Primary Colors
+---
 
-### Blue (Primary Brand Color)
+## 1. Brand Palette
 
-- **Primary Blue**: `bg-blue-600` / `text-blue-600` / `border-blue-600`
-  - Light mode: `#2563eb` (blue-600)
-  - Dark mode: `#3b82f6` (blue-400) for text/icons
-- **Hover States**: `hover:bg-blue-700` / `hover:text-blue-500`
-- **Focus Rings**: `focus:ring-blue-600` / `dark:focus:ring-blue-500`
+### Primary
 
-### Purple (Accent for Gradients)
+- **Brand blue**: `#3b82f6` (brand-500) / `#2563eb` (brand-600)
+- **Brand purple**: `#a855f7` (purple-500) / `#9333ea` (purple-600)
 
-- **Gradient Purple**: `from-purple-600` / `via-purple-600` / `to-purple-600`
-  - Light mode: `#9333ea` (purple-600)
-  - Dark mode: `#a855f7` (purple-400) for gradients
-- **Glow Effects**: `bg-purple-500/30` / `dark:bg-purple-500/20`
+Tailwind utilities: `bg-blue-600`, `text-blue-500`, `bg-purple-500`, etc. Gradient helper: `text-gradient-brand`.
 
-## Background Colors
+### Data Accents
 
-### Light Mode
+| Token   | Hex       | Meaning                                  | Tailwind stem |
+| ------- | --------- | ---------------------------------------- | ------------- |
+| Teal    | `#2dd4bf` | Positive data, improvements, "up" trends | `teal-*`      |
+| Amber   | `#f59e0b` | Streaks, PRs, warnings                   | `amber-*`     |
+| Rose    | `#f43f5e` | Errors, alerts, regressions              | `rose-*`      |
+| Cyan    | `#06b6d4` | Informational                            | `cyan-*`      |
 
-- **Page Background**: `bg-white` (`#ffffff`)
-- **Card/Section Background**: `bg-white`
-- **Dark Sections**: `bg-gray-50` / `bg-gray-100`
+### Neutrals
 
-### Dark Mode
+Gray scale `gray-50 → gray-950`. Dark mode page background is `#0b0f17` (applied via `var(--background)`), cards typically use `dark:bg-gray-900/60` with glass blur.
 
-- **Page Background**: `dark:bg-gray-900` (`#111827`)
-- **Card/Section Background**: `dark:bg-gray-800` (`#1f2937`)
-- **Input Background**: `dark:bg-gray-700` (`#374151`)
+---
 
-## Text Colors
+## 2. Surface Tokens (CSS variables in `globals.css`)
 
-### Light Mode
+| Variable              | Purpose                      |
+| --------------------- | ---------------------------- |
+| `--background`        | Page background              |
+| `--foreground`        | Default text                 |
+| `--surface-1`         | Default glass surface        |
+| `--surface-2`         | Stronger glass surface       |
+| `--surface-border`    | Subtle border on glass cards |
+| `--ring-brand`        | Focus-visible ring color     |
+| `--shadow-sm/md/lg`   | Elevation ramp               |
+| `--shadow-glow-brand` | Brand glow for CTAs          |
 
-- **Primary Text**: `text-gray-900` (`#111827`)
-- **Secondary Text**: `text-gray-700` (`#374151`)
-- **Tertiary Text**: `text-gray-600` (`#4b5563`)
-- **Muted Text**: `text-gray-400` (`#9ca3af`)
+All variables auto-flip between light and dark via `html.dark`.
 
-### Dark Mode
+---
 
-- **Primary Text**: `dark:text-gray-100` (`#f3f4f6`)
-- **Secondary Text**: `dark:text-gray-200` (`#e5e7eb`)
-- **Tertiary Text**: `dark:text-gray-300` (`#d1d5db`)
-- **Muted Text**: `dark:text-gray-400` (`#9ca3af`)
+## 3. Surfaces
 
-## Border Colors
+- **Glass card**: `bg-white/70 dark:bg-gray-900/60 backdrop-blur-xl border border-white/60 dark:border-white/10` (or use `.glass-surface` utility)
+- **Elevated card**: plain white/near-black with layered soft shadow
+- **Gradient border card**: apply via `<Card variant="gradient-border">` — uses padding-box / border-box trick with a brand gradient.
+- **Interactive cards** gain a 2px lift + shadow-md on hover.
 
-### Light Mode
+---
 
-- **Default Border**: `border-gray-200` (`#e5e7eb`)
-- **Input Border**: `ring-gray-300` (`#d1d5db`)
-- **Hover Border**: `hover:border-gray-400` (`#9ca3af`)
+## 4. Typography
 
-### Dark Mode
+- Font: `Geist Sans` (loaded in `layout.tsx`) via `--font-geist-sans`.
+- Display headings: `.display-heading` utility → `font-semibold`/`bold`, `tracking-tight`, `letter-spacing: -0.02em`, `line-height: 1.05`.
+- Stat numbers: `tabular-nums font-bold tracking-tight`.
 
-- **Default Border**: `dark:border-gray-800` (`#1f2937`)
-- **Input Border**: `dark:ring-gray-600` (`#4b5563`)
-- **Hover Border**: `dark:hover:border-gray-600` (`#4b5563`)
+---
 
-## Button Colors
+## 5. Motion (framer-motion)
 
-### Primary Buttons
+All shared variants live in `app/components/ui/MotionPresets.ts`.
 
-- **Background**: `bg-blue-600` (`#2563eb`)
-- **Hover**: `hover:bg-blue-700` (`#1d4ed8`)
-- **Text**: `text-white`
-- **Focus**: `focus:ring-blue-600`
+| Preset                 | Use                                 |
+| ---------------------- | ----------------------------------- |
+| `fadeUp`               | Default scroll-in animation         |
+| `fadeIn`               | Pure fade                           |
+| `scaleIn`              | Modals, popovers                    |
+| `slideInRight`         | Sheets, drawers                     |
+| `slideInUp`            | Mobile sheets, toasts               |
+| `stagger`              | Container for staggered children    |
+| `staggerTight`         | Dense lists/grids                   |
+| `hoverLift`/`tapScale` | Card/button micro-interactions      |
+| `springSoft`/`Snappy`  | Shared spring transitions           |
+| `inViewOnce`           | Default `viewport` for `whileInView`|
 
-### Secondary Buttons
+**Always** gate animation work on `useReducedMotion()` from framer-motion. The CSS already collapses durations at the `prefers-reduced-motion: reduce` media query for safety.
 
-- **Background**: `bg-white` / `dark:bg-gray-800`
-- **Border**: `border-gray-300` / `dark:border-gray-700`
-- **Hover**: `hover:bg-gray-50` / `dark:hover:bg-gray-700`
-- **Text**: `text-gray-700` / `dark:text-gray-200`
+---
 
-### Gradient Buttons (Hero/CTA)
+## 6. Utilities Added in `globals.css`
 
-- **Background**: `bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600`
-- **Dark Mode**: `dark:from-blue-400 dark:via-purple-400 dark:to-blue-400`
-- **Shadow**: `shadow-lg shadow-purple-500/50`
+- `.bg-aurora` / `.bg-aurora-subtle` — animated brand radial backdrop.
+- `.text-gradient-brand` — blue→purple→teal gradient text.
+- `.text-gradient-warm` — amber→rose gradient text.
+- `.shadow-glow-brand` — soft brand glow shadow for CTAs.
+- `.ring-glow-brand` — brand focus/hover ring.
+- `.glass-surface` — shorthand glass card.
+- `.shimmer` — skeleton shimmer animation.
+- `.animate-float`, `.animate-pulse-glow`, `.animate-gradient` — tasteful background animations.
+- `.mask-fade-l|r|t|b` — edge fade masks.
+- `.scrollbar-thin` — thin, branded scrollbar is applied globally. Hovering the track shows a blue→purple gradient thumb.
+- `.display-heading` — display heading preset.
 
-## Status Colors
+Focus-visible is styled globally with a 2px brand ring + offset.
 
-### Success
+---
 
-- **Background**: `bg-green-50` / `dark:bg-green-900/20`
-- **Border**: `border-green-200` / `dark:border-green-800`
-- **Text**: `text-green-800` / `dark:text-green-300`
-- **Icon**: `text-green-600` / `dark:text-green-400`
+## 7. Primitives (`app/components/ui/`)
 
-### Error
-
-- **Background**: `bg-red-50` / `dark:bg-red-900/20`
-- **Border**: `border-red-200` / `dark:border-red-800`
-- **Text**: `text-red-800` / `dark:text-red-300`
-- **Icon**: `text-red-600` / `dark:text-red-400`
-
-## Input Fields
-
-### Light Mode
-
-- **Background**: `bg-white`
-- **Border**: `ring-gray-300`
-- **Focus**: `focus:ring-blue-600`
-- **Placeholder**: `placeholder:text-gray-400`
-
-### Dark Mode
-
-- **Background**: `dark:bg-gray-700`
-- **Border**: `dark:ring-gray-600`
-- **Focus**: `dark:focus:ring-blue-500`
-- **Placeholder**: `dark:placeholder:text-gray-500`
-
-## Usage Examples
-
-### Primary CTA Button
+All components are typed, accessible, dark-mode-aware, and import-friendly via:
 
 ```tsx
-className="bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-600"
+import { Button, Card, StatTile } from "../components/ui";
 ```
 
-### Secondary Button
+See `app/components/ui/index.ts` for the barrel. Key shape:
+
+- `Button` — `primary | secondary | ghost | outline | danger | gradient`, sizes `sm | md | lg`, `loading`, `iconLeft/iconRight`, spring hover + tap.
+- `Card` — `default | glass | gradient-border | elevated`, optional `interactive`.
+- `Input`, `Textarea`, `Select` — labeled, helper/error support, brand focus ring.
+- `Label`, `Badge`, `Divider`, `Spinner`, `Skeleton`.
+- `StatTile` — animated count-up with framer-motion; accents `brand | teal | amber | rose | purple | neutral`, optional sparkline.
+- `SectionHeading`, `PageHeader`, `PageContainer` — page structure.
+- `Tabs` — animated underline or pill, uses `layoutId`.
+- `Modal` — portal, focus trap lite, escape-to-close.
+- `Toast` + `ToastProvider`/`useToast` — minimal toast system.
+- `AppShell` — authenticated shell (top bar + nav + profile + aurora background + footer).
+
+---
+
+## 8. Migration Tips
+
+- Prefer the new primitives over raw Tailwind class stacks where possible.
+- Existing pages continue to work — these primitives are additive.
+- When writing new pages, wrap with `<AppShell>` for authed views or `<PageContainer>` for marketing pages.
+- Use data accents (teal/amber/rose) sparingly and intentionally.
+- Never hard-code `#0b0f17`/`#111827` backgrounds — let `var(--background)` or Tailwind classes handle it.
+
+---
+
+## 9. Legacy Reference (still valid)
+
+### Buttons
 
 ```tsx
-className="border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+// Primary
+<Button variant="primary">Continue</Button>
+
+// Secondary
+<Button variant="secondary">Cancel</Button>
+
+// Gradient CTA
+<Button variant="gradient" size="lg">Start training</Button>
 ```
 
-### Input Field
+### Cards
 
 ```tsx
-className="bg-white dark:bg-gray-700 ring-1 ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+<Card variant="glass" interactive>
+  <CardTitle>Weekly volume</CardTitle>
+  <CardDescription>Compared to last week</CardDescription>
+</Card>
 ```
 
-### Card Container
+### Stats
 
 ```tsx
-className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg"
+<StatTile label="Distance" value={12.4} unit="km" trend="+8%" accent="teal" />
 ```
-
-### Text Headings
-
-```tsx
-className="text-gray-900 dark:text-gray-100"
-```
-
-### Text Body
-
-```tsx
-className="text-gray-700 dark:text-gray-300"
-```
-
-### Muted Text
-
-```tsx
-className="text-gray-600 dark:text-gray-400"
-```
-
-## Notes
-
-- Always include both light and dark mode variants
-- Use Tailwind's opacity modifiers (e.g., `/30`, `/20`) for glow effects
-- Maintain consistent spacing and border radius (`rounded-lg` for most elements)
-- Use `transition-colors` for smooth color changes on hover/focus
-- Ensure sufficient contrast ratios for accessibility
-

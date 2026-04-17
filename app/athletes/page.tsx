@@ -5,29 +5,63 @@
 
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
-import ThemeToggle from "../components/ThemeToggle";
-import Footer from "../components/Footer";
 import { getProfilePicSrc } from "../../lib/profile-pic-utils";
 import { apiService } from "../services/api";
+import {
+  AppShell,
+  Badge,
+  Button,
+  Card,
+  Input,
+  Skeleton,
+  Spinner,
+  fadeUp,
+  staggerTight,
+} from "../components/ui";
 
 interface AthleteCard {
   athleteName: string;
   imageData: string;
 }
 
+const IconSearch = (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+  </svg>
+);
+
+const IconPlus = (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+  </svg>
+);
+
+const IconChevronRight = (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5l7 7-7 7" />
+  </svg>
+);
+
+const IconUser = (
+  <svg className="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+  </svg>
+);
+
 export default function AthletesPage() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [athletes, setAthletes] = useState<AthleteCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
+  const [search, setSearch] = useState("");
 
   // Require authentication - redirects to login if not authenticated
   useRequireAuth();
@@ -44,7 +78,7 @@ export default function AthletesPage() {
         setError(null);
         const response = await apiService.getAthletes<{ athletesData: AthleteCard[] }>(user.apiKey);
         console.log("Athletes API response:", response);
-        
+
         // Extract athletes array from response
         // Response structure: { athletesData: [...] }
         let athletesData: AthleteCard[] = [];
@@ -63,7 +97,7 @@ export default function AthletesPage() {
           // Direct array response
           athletesData = response.data;
         }
-        
+
         setAthletes(athletesData);
       } catch (err) {
         console.error("Failed to fetch athletes:", err);
@@ -79,195 +113,229 @@ export default function AthletesPage() {
     }
   }, [user, authLoading]);
 
-  const handleLogout = async () => {
-    await logout();
-  };
+  const filteredAthletes = useMemo(() => {
+    if (!Array.isArray(athletes)) return [] as AthleteCard[];
+    const q = search.trim().toLowerCase();
+    if (!q) return athletes;
+    return athletes.filter((a) => a.athleteName?.toLowerCase().includes(q));
+  }, [athletes, search]);
 
-  if (authLoading || loading) {
+  // Auth / role gating screens
+  if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+      <AppShell title="Athletes" subtitle="Your roster" maxWidth="xl">
+        <div className="flex items-center justify-center py-24">
+          <Spinner size="lg" variant="brand" />
         </div>
-      </div>
+      </AppShell>
     );
   }
 
-  // Check if user is a coach
   if (user && user.role?.toLowerCase() !== "coach") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <p className="text-lg text-gray-600 dark:text-gray-400">Access denied. This page is for coaches only.</p>
-          <Link href="/dashboard" className="mt-4 text-blue-600 dark:text-blue-400 hover:underline">
+      <AppShell title="Athletes" subtitle="Your roster" maxWidth="md">
+        <Card padding="lg" className="text-center">
+          <p className="text-gray-700 dark:text-gray-300">
+            Access denied. This page is for coaches only.
+          </p>
+          <Link
+            href="/dashboard"
+            className="mt-4 inline-block text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+          >
             Return to Dashboard
           </Link>
-        </div>
-      </div>
+        </Card>
+      </AppShell>
     );
   }
 
+  const athletesArray = Array.isArray(athletes) ? athletes : [];
+  const totalCount = athletesArray.length;
+  const visibleCount = filteredAthletes.length;
+
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-          <Link href="/" className="flex items-center gap-2">
-            <Image
-              src="/logo/goosenet_logo.png"
-              alt="GooseNet"
-              width={32}
-              height={32}
-              className="h-8 w-auto"
-            />
-            <span className="text-xl font-bold text-gray-900 dark:text-gray-100">GooseNet</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
-            {user?.profilePicString && (
-              <img
-                src={getProfilePicSrc(user.profilePicString)}
-                alt={user.userName}
-                referrerPolicy="no-referrer"
-                className="hidden md:block h-10 w-10 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
-              />
-            )}
-            <button
-              onClick={handleLogout}
-              className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Logout
-            </button>
-          </div>
-        </nav>
-      </header>
-
-      {/* Main Content */}
-      <main className="relative flex-1 px-6 py-12 sm:px-6 sm:py-24 overflow-hidden">
-        {/* Glowing purple/blue background effects */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-500/30 dark:bg-purple-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute -top-20 -right-20 w-80 h-80 bg-blue-500/30 dark:bg-blue-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-purple-500/20 dark:from-purple-500/15 dark:via-blue-500/15 dark:to-purple-500/15 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-pink-500/20 dark:bg-pink-500/15 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-500/25 dark:bg-blue-500/15 rounded-full blur-3xl"></div>
+    <AppShell
+      title="Athletes"
+      subtitle="Your roster"
+      actions={
+        <Link href="/connect-athlete" aria-label="Add athlete">
+          <Button variant="gradient" iconLeft={IconPlus}>
+            Add Athlete
+          </Button>
+        </Link>
+      }
+      maxWidth="xl"
+    >
+      {/* Search + counter */}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="w-full sm:max-w-md">
+          <Input
+            type="search"
+            placeholder="Search athletes…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            iconLeft={IconSearch}
+            aria-label="Search athletes"
+          />
         </div>
+        {!loading && totalCount > 0 && (
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            {search.trim()
+              ? `${visibleCount} of ${totalCount} athletes`
+              : `${totalCount} ${totalCount === 1 ? "athlete" : "athletes"}`}
+          </div>
+        )}
+      </div>
 
-        <div className="relative mx-auto max-w-7xl">
-          {/* Header Section */}
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-5xl">
-                My Athletes
-              </h1>
-              <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                View and manage all your athletes
-              </p>
-            </div>
-            <Link
-              href="/dashboard"
-              className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+      {/* Error */}
+      {error && (
+        <Card
+          padding="md"
+          className="mb-6 border-rose-500/30 bg-rose-50 text-rose-900 dark:bg-rose-500/10 dark:text-rose-100 dark:border-rose-400/30"
+        >
+          <p className="text-sm">{error}</p>
+        </Card>
+      )}
+
+      {/* Loading skeleton grid */}
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Card key={i} padding="md" className="flex flex-col items-center gap-3">
+              <Skeleton circle w={80} h={80} />
+              <Skeleton h={18} className="w-3/4" />
+              <Skeleton h={12} className="w-1/2" />
+              <Skeleton h={34} className="w-full" />
+            </Card>
+          ))}
+        </div>
+      ) : athletesArray.length === 0 && !error ? (
+        /* Empty state */
+        <Card padding="lg" className="text-center">
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/15 via-purple-500/15 to-teal-400/15 ring-1 ring-inset ring-white/20">
+            <svg
+              className="h-10 w-10 text-blue-500 dark:text-blue-300"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden
             >
-              Back to Dashboard
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            No athletes yet
+          </h3>
+          <p className="mx-auto mt-2 max-w-md text-sm text-gray-600 dark:text-gray-400">
+            Invite your first athlete to start tracking workouts, activity, and recovery together.
+          </p>
+          <div className="mt-5">
+            <Link href="/connect-athlete">
+              <Button variant="gradient" iconLeft={IconPlus}>
+                Invite an athlete
+              </Button>
             </Link>
           </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="mb-6 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
-              <p className="text-red-800 dark:text-red-200">{error}</p>
-            </div>
-          )}
-
-          {/* Athletes Grid */}
-          {!Array.isArray(athletes) || (athletes.length === 0 && !error) ? (
-            <div className="text-center py-12">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-              <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">No athletes found</h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Get started by connecting with your first athlete.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {Array.isArray(athletes) && athletes.map((athlete, index) => (
-                <div
-                  key={index}
-                  className="relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6 hover:shadow-xl transition-shadow"
+        </Card>
+      ) : filteredAthletes.length === 0 ? (
+        /* Filtered-empty */
+        <Card padding="lg" className="text-center">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            No matches for “{search.trim()}”
+          </h3>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Try a different name or clear the search.
+          </p>
+          <div className="mt-4">
+            <Button variant="secondary" onClick={() => setSearch("")}>
+              Clear search
+            </Button>
+          </div>
+        </Card>
+      ) : (
+        <motion.div
+          variants={staggerTight}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        >
+          {filteredAthletes.map((athlete, index) => {
+            const idx = athletesArray.indexOf(athlete);
+            const onClick = () => {
+              const athleteNameEncoded = encodeURIComponent(athlete.athleteName);
+              const imageEncoded = athlete.imageData ? encodeURIComponent(athlete.imageData) : '';
+              const url = `/athlete/${athleteNameEncoded}${imageEncoded ? `?image=${imageEncoded}` : ''}`;
+              router.push(url);
+            };
+            return (
+              <motion.div key={`${athlete.athleteName}-${index}`} variants={fadeUp}>
+                <Card
+                  variant="default"
+                  padding="md"
+                  interactive
+                  role="button"
+                  tabIndex={0}
+                  onClick={onClick}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onClick();
+                    }
+                  }}
+                  className="flex flex-col items-center gap-3 text-center"
                 >
-                  <div className="flex flex-col items-center text-center">
-                    {/* Athlete Image */}
-                    <div className="mb-4">
-                      {athlete.imageData && !failedImages.has(index) ? (
-                        <img
-                          src={getProfilePicSrc(athlete.imageData)}
-                          alt={athlete.athleteName}
-                          referrerPolicy="no-referrer"
-                          className="h-24 w-24 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover"
-                          onError={() => {
-                            setFailedImages((prev) => new Set(prev).add(index));
-                          }}
-                        />
-                      ) : (
-                        <div className="h-24 w-24 rounded-full border-2 border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                          <svg
-                            className="h-12 w-12 text-gray-400"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                    {/* Athlete Name */}
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                  <div className="relative">
+                    <span
+                      aria-hidden
+                      className="absolute inset-0 -m-1 rounded-full bg-gradient-to-tr from-blue-500/60 via-purple-500/50 to-teal-400/50 opacity-60 blur-md"
+                    />
+                    {athlete.imageData && !failedImages.has(idx) ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={getProfilePicSrc(athlete.imageData)}
+                        alt={athlete.athleteName}
+                        referrerPolicy="no-referrer"
+                        className="relative h-20 w-20 rounded-full border-2 border-white/80 dark:border-gray-900 object-cover"
+                        onError={() => {
+                          setFailedImages((prev) => new Set(prev).add(idx));
+                        }}
+                      />
+                    ) : (
+                      <div className="relative flex h-20 w-20 items-center justify-center rounded-full border-2 border-white/80 dark:border-gray-900 bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-teal-400/20">
+                        {IconUser}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="min-w-0">
+                    <h3 className="truncate text-base font-semibold text-gray-900 dark:text-gray-100">
                       {athlete.athleteName}
                     </h3>
-                    {/* Manage Button */}
-                    <button 
-                      onClick={() => {
-                        const athleteNameEncoded = encodeURIComponent(athlete.athleteName);
-                        const imageEncoded = athlete.imageData ? encodeURIComponent(athlete.imageData) : '';
-                        const url = `/athlete/${athleteNameEncoded}${imageEncoded ? `?image=${imageEncoded}` : ''}`;
-                        router.push(url);
-                      }}
-                      className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
-                    >
-                      Manage
-                    </button>
+                    <div className="mt-1.5 flex items-center justify-center gap-1.5">
+                      <Badge variant="brand" size="sm" dot>
+                        Athlete
+                      </Badge>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
-      <Footer />
-    </div>
+
+                  <div className="mt-1 flex w-full items-center justify-between gap-2 border-t border-gray-200/70 pt-3 text-xs text-gray-500 dark:border-white/10 dark:text-gray-400">
+                    <span className="inline-flex items-center gap-1">
+                      <span className="font-semibold text-gray-700 dark:text-gray-200">View</span>
+                      <span>profile</span>
+                    </span>
+                    <span className="text-blue-600 dark:text-blue-400">{IconChevronRight}</span>
+                  </div>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      )}
+    </AppShell>
   );
 }
-

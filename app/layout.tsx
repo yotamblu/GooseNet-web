@@ -98,7 +98,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/logo/goosenet_logo.png" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 h-full`}
+        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased text-gray-900 dark:text-gray-100 h-full selection:bg-blue-500/20`}
       >
         <JsonLdOrganizationWebSite />
         <Providers>

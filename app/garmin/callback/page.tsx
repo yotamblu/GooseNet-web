@@ -8,18 +8,22 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
-import Link from "next/link";
 import Image from "next/image";
+import { motion, useReducedMotion } from "framer-motion";
 import { useAuth } from "../../../context/AuthContext";
-import { useRequireAuth } from "../../../hooks/useRequireAuth";
-import ThemeToggle from "../../components/ThemeToggle";
-import Footer from "../../components/Footer";
-import { getProfilePicSrc } from "../../../lib/profile-pic-utils";
 import { setToken } from "../../../lib/auth";
 import { apiService } from "../../services/api";
+import {
+  Button,
+  Card,
+  PageContainer,
+  Spinner,
+  fadeUp,
+  transitionQuick,
+} from "../../components/ui";
 
 function GarminCallbackPageContent() {
-  const { user, loading, logout, refreshUser } = useAuth();
+  const { user, loading, refreshUser } = useAuth();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -28,6 +32,7 @@ function GarminCallbackPageContent() {
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
   const [success, setSuccess] = useState(false);
+  const reduce = useReducedMotion();
 
   // Don't use useRequireAuth here - we'll handle auth check manually
   // to allow redirect to login with returnUrl
@@ -50,7 +55,7 @@ function GarminCallbackPageContent() {
         const oauth_verifier = searchParams.get("oauth_verifier");
         const stateToken = searchParams.get("stateToken");
         const urlTheme = searchParams.get("theme");
-        
+
         // Get OAuth params from URL (for mobile localStorage issues) or localStorage
         const urlTokenSecret = searchParams.get("token_secret");
         const urlApiKey = searchParams.get("apiKey");
@@ -79,7 +84,7 @@ function GarminCallbackPageContent() {
             sessionExpired = true;
           }
         }
-        
+
         // If we got params from URL, also store them in localStorage for consistency
         if (urlTokenSecret && !localStorage.getItem("garmin_token_secret")) {
           localStorage.setItem("garmin_token_secret", urlTokenSecret);
@@ -95,7 +100,7 @@ function GarminCallbackPageContent() {
         if ((sessionExpired || !user) && stateToken) {
           try {
             const jwtResponse = await apiService.getJwtFromStateToken<{ token: string } | { message: string }>(stateToken);
-            
+
             if (jwtResponse.data && "token" in jwtResponse.data && jwtResponse.data.token) {
               // Store JWT token and refresh user
               setToken(jwtResponse.data.token);
@@ -182,13 +187,13 @@ function GarminCallbackPageContent() {
             hasTimestamp: !!localStorage.getItem("garmin_token_timestamp"),
           },
         };
-        
+
         const errorDetailsString = JSON.stringify(errorDetailsObj, null, 2);
-        
+
         // Log to console
         console.error("Failed to complete Garmin connection:", err);
         console.error("Error details:", errorDetailsObj);
-        
+
         // Store error in localStorage for debugging (keep last 5 errors)
         try {
           const errorLog = JSON.parse(localStorage.getItem("garmin_error_log") || "[]");
@@ -204,11 +209,11 @@ function GarminCallbackPageContent() {
         } catch (e) {
           console.error("Failed to save error to localStorage:", e);
         }
-        
+
         setError(errorMessage);
         setErrorDetails(errorDetailsString);
         setIsProcessing(false);
-        
+
         // Clear localStorage on error
         localStorage.removeItem("garmin_token_secret");
         localStorage.removeItem("garmin_api_key");
@@ -221,18 +226,44 @@ function GarminCallbackPageContent() {
     }
   }, [searchParams, user, loading, router, theme, setTheme, refreshUser]);
 
-  const handleLogout = async () => {
-    await logout();
-  };
-
+  // Loading / processing flash state
   if (loading || isProcessing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Completing Garmin connection...</p>
-        </div>
-      </div>
+      <HeroLayout>
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+          className="text-center"
+        >
+          <div className="relative mx-auto mb-6 h-24 w-24">
+            <span
+              aria-hidden
+              className="absolute inset-0 rounded-full bg-gradient-to-tr from-blue-500/60 via-purple-500/60 to-teal-400/60 blur-xl animate-pulse-glow"
+            />
+            <div className="relative flex h-24 w-24 items-center justify-center rounded-full border border-white/60 dark:border-white/10 bg-white/80 dark:bg-gray-950/70 backdrop-blur-xl shadow-glow-brand">
+              <Image
+                src="/logo/goosenet_logo.png"
+                alt=""
+                width={40}
+                height={40}
+                className="h-10 w-10 object-contain"
+                priority
+              />
+            </div>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
+            Connecting your <span className="text-gradient-brand">Garmin</span>…
+          </h1>
+          <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
+            Hang tight — we&apos;re finalizing the handshake.
+          </p>
+          <div className="mt-6 inline-flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <Spinner size="sm" variant="brand" />
+            <span>Completing OAuth</span>
+          </div>
+        </motion.div>
+      </HeroLayout>
     );
   }
 
@@ -242,175 +273,187 @@ function GarminCallbackPageContent() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <Image
-              src="/logo/goosenet_logo.png"
-              alt="GooseNet"
-              width={32}
-              height={32}
-              className="h-6 w-auto sm:h-8"
-            />
-            <span className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">GooseNet</span>
-          </Link>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <ThemeToggle />
-            {user?.profilePicString && (
-              <img
-                src={getProfilePicSrc(user.profilePicString)}
-                alt={user.userName}
-                referrerPolicy="no-referrer"
-                className="hidden md:block h-10 w-10 rounded-full border-2 border-gray-300 dark:border-gray-700 object-cover hover:border-blue-600 dark:hover:border-blue-400 transition-colors"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
+    <HeroLayout>
+      {success ? (
+        <motion.div
+          key="success"
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+          className="w-full"
+        >
+          <Card variant="glass" padding="lg" className="text-center">
+            <div className="relative mx-auto mb-5 h-20 w-20 sm:h-24 sm:w-24">
+              <motion.span
+                aria-hidden
+                initial={reduce ? { opacity: 0 } : { scale: 0.6, opacity: 0 }}
+                animate={reduce ? { opacity: 1 } : { scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                className="absolute inset-0 rounded-full bg-gradient-to-tr from-teal-400/60 via-emerald-400/60 to-blue-500/60 blur-lg"
               />
-            )}
-            <button
-              onClick={handleLogout}
-              className="rounded-lg border-2 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 transition-all hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Logout
-            </button>
-          </div>
-        </nav>
-      </header>
+              <motion.div
+                initial={reduce ? { opacity: 0 } : { scale: 0.6, opacity: 0 }}
+                animate={reduce ? { opacity: 1 } : { scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 320, damping: 22 }}
+                className="relative flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-full bg-teal-50 dark:bg-teal-500/15 border border-teal-400/40"
+              >
+                <motion.svg
+                  className="h-10 w-10 sm:h-12 sm:w-12 text-teal-600 dark:text-teal-300"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  aria-hidden
+                  initial={reduce ? undefined : { pathLength: 0, opacity: 0 }}
+                  animate={reduce ? undefined : { pathLength: 1, opacity: 1 }}
+                  transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
+                >
+                  <motion.path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={3}
+                    d="M5 13l4 4L19 7"
+                    initial={reduce ? undefined : { pathLength: 0 }}
+                    animate={reduce ? undefined : { pathLength: 1 }}
+                    transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
+                  />
+                </motion.svg>
+              </motion.div>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
+              Garmin connected!
+            </h1>
+            <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
+              Your account is linked. Redirecting you to the dashboard…
+            </p>
+            <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <Spinner size="xs" />
+              <span>Redirecting</span>
+            </div>
+          </Card>
+        </motion.div>
+      ) : error ? (
+        <motion.div
+          key="error"
+          variants={fadeUp}
+          initial="hidden"
+          animate="show"
+          className="w-full"
+        >
+          <Card variant="glass" padding="lg" className="text-center">
+            <div className="relative mx-auto mb-5 h-20 w-20 sm:h-24 sm:w-24">
+              <span
+                aria-hidden
+                className="absolute inset-0 rounded-full bg-rose-400/30 blur-lg"
+              />
+              <motion.div
+                initial={reduce ? { opacity: 0 } : { scale: 0.7, opacity: 0 }}
+                animate={reduce ? { opacity: 1 } : { scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 320, damping: 22 }}
+                className="relative flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-500/15 border border-rose-400/40"
+              >
+                <svg className="h-10 w-10 sm:h-12 sm:w-12 text-rose-600 dark:text-rose-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </motion.div>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
+              Connection failed
+            </h1>
+            <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400 break-words px-2">
+              {error}
+            </p>
 
-      {/* Main Content */}
-      <main className="relative flex-1 px-4 py-8 sm:px-6 sm:py-12 lg:py-24 overflow-hidden">
-        {/* Glowing purple/blue background effects */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-500/30 dark:bg-purple-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute -top-20 -right-20 w-80 h-80 bg-blue-500/30 dark:bg-blue-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-purple-500/20 dark:from-purple-500/15 dark:via-blue-500/15 dark:to-purple-500/15 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-pink-500/20 dark:bg-pink-500/15 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-500/25 dark:bg-blue-500/15 rounded-full blur-3xl"></div>
-        </div>
-
-        <div className="relative mx-auto max-w-3xl">
-          {/* Status Card */}
-          <div className="relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-4 sm:p-6 lg:p-8">
-            {success ? (
-              <div className="text-center">
-                <div className="mb-4">
-                  <div className="mx-auto h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center transition-all duration-300 animate-[bounce_0.6s_ease-in-out]">
-                    <svg
-                      className="h-10 w-10 sm:h-12 sm:w-12 text-green-600 dark:text-green-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={3}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Garmin Connected Successfully!
-                </p>
-                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 px-2">
-                  Your Garmin account has been connected. Redirecting to dashboard...
-                </p>
-              </div>
-            ) : error ? (
-              <div className="text-center">
-                <div className="mb-4">
-                  <div className="mx-auto h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center transition-all duration-300 animate-[bounce_0.6s_ease-in-out]">
-                    <svg
-                      className="h-10 w-10 sm:h-12 sm:w-12 text-red-600 dark:text-red-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={3}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </div>
-                </div>
-                <p className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Connection Failed
-                </p>
-                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-4 px-2 break-words">{error}</p>
-                
-                {/* Error Details Toggle */}
-                {errorDetails && (
-                  <div className="mb-4">
-                    <button
-                      onClick={() => setShowErrorDetails(!showErrorDetails)}
-                      className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:underline mb-2"
-                    >
-                      {showErrorDetails ? "Hide" : "Show"} Error Details
-                    </button>
-                    {showErrorDetails && (
-                      <div className="mt-2 p-3 bg-gray-100 dark:bg-gray-900 rounded-lg text-left">
-                        <pre className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words overflow-x-auto">
-                          {errorDetails}
-                        </pre>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(errorDetails).catch(() => {});
-                            alert("Error details copied to clipboard!");
-                          }}
-                          className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                        >
-                          Copy to Clipboard
-                        </button>
-                      </div>
-                    )}
-                  </div>
+            {errorDetails && (
+              <div className="mt-4">
+                <button
+                  onClick={() => setShowErrorDetails(!showErrorDetails)}
+                  className="text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                  type="button"
+                >
+                  {showErrorDetails ? "Hide" : "Show"} error details
+                </button>
+                {showErrorDetails && (
+                  <motion.div
+                    initial={reduce ? { opacity: 0 } : { opacity: 0, height: 0 }}
+                    animate={reduce ? { opacity: 1 } : { opacity: 1, height: "auto" }}
+                    transition={transitionQuick}
+                    className="mt-3 overflow-hidden"
+                  >
+                    <div className="p-3 rounded-xl bg-gray-100 dark:bg-gray-950/60 border border-gray-200 dark:border-white/10 text-left">
+                      <pre className="text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words overflow-x-auto max-h-64">
+                        {errorDetails}
+                      </pre>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(errorDetails).catch(() => {});
+                          alert("Error details copied to clipboard!");
+                        }}
+                        className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        Copy to clipboard
+                      </button>
+                    </div>
+                  </motion.div>
                 )}
-                
-                <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                  <button
-                    onClick={() => router.push("/dashboard")}
-                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
-                  >
-                    Return to Dashboard
-                  </button>
-                  <button
-                    onClick={() => {
-                      const errorLog = JSON.parse(localStorage.getItem("garmin_error_log") || "[]");
-                      const logText = JSON.stringify(errorLog, null, 2);
-                      navigator.clipboard.writeText(logText).catch(() => {});
-                      alert("Error log copied to clipboard!");
-                    }}
-                    className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    Copy Error Log
-                  </button>
-                </div>
               </div>
-            ) : null}
-          </div>
+            )}
+
+            <div className="mt-6 flex flex-col sm:flex-row gap-3 sm:justify-center">
+              <Button
+                variant="gradient"
+                onClick={() => router.push("/dashboard")}
+              >
+                Return to dashboard
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const errorLog = JSON.parse(localStorage.getItem("garmin_error_log") || "[]");
+                  const logText = JSON.stringify(errorLog, null, 2);
+                  navigator.clipboard.writeText(logText).catch(() => {});
+                  alert("Error log copied to clipboard!");
+                }}
+              >
+                Copy error log
+              </Button>
+            </div>
+          </Card>
+        </motion.div>
+      ) : null}
+    </HeroLayout>
+  );
+}
+
+function HeroLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative min-h-screen flex items-center justify-center bg-aurora-subtle bg-white dark:bg-[#0b0f17] overflow-hidden">
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -left-32 h-96 w-96 rounded-full bg-blue-500/20 dark:bg-blue-500/15 blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-purple-500/20 dark:bg-purple-500/15 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[28rem] w-[28rem] rounded-full bg-gradient-to-r from-teal-400/15 via-blue-500/15 to-purple-500/15 blur-3xl" />
+      </div>
+      <PageContainer width="sm" padded={false} className="relative py-12 sm:py-16">
+        <div className="mx-auto flex max-w-xl flex-col items-center justify-center">
+          {children}
         </div>
-      </main>
-      <Footer />
+      </PageContainer>
     </div>
   );
 }
 
 export default function GarminCallbackPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
+    <Suspense
+      fallback={
+        <div className="relative min-h-screen flex items-center justify-center bg-aurora-subtle bg-white dark:bg-[#0b0f17]">
+          <div className="text-center">
+            <Spinner size="lg" variant="brand" className="mx-auto" />
+            <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Loading…</p>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <GarminCallbackPageContent />
     </Suspense>
   );

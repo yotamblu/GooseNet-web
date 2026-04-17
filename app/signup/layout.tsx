@@ -11,5 +11,9 @@ export default function SignUpLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <div className="relative bg-aurora-subtle min-h-screen">
+      {children}
+    </div>
+  );
 }

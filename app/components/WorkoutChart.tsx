@@ -1,11 +1,19 @@
 /**
  * WorkoutChart Component
- * Displays a line chart for workout data over time with hover tooltips
+ *
+ * Renders a workout time-series (heart rate / pace / elevation / etc.) as a
+ * smooth spline with a gradient area fill, animated stroke draw on mount, a
+ * subtle dashed grid, and a glassy hover crosshair tooltip.
+ *
+ * The exported props shape is identical to the previous implementation —
+ * external pages can keep passing the same data.
  */
 
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useId, useMemo, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { cn } from "./ui/cn";
 
 interface WorkoutChartProps {
   data: number[];
@@ -16,14 +24,46 @@ interface WorkoutChartProps {
   className?: string;
   minValue?: number;
   maxValue?: number;
-  timeData?: number[]; // Time in seconds for each data point
-  formatValue?: (value: number) => string; // Custom formatter for tooltip value
-  invertYAxis?: boolean; // If true, invert Y-axis (for pace where lower is better)
+  timeData?: number[];
+  formatValue?: (value: number) => string;
+  invertYAxis?: boolean;
+}
+
+function formatTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) {
+    return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  }
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+/**
+ * Build a smooth SVG path (Catmull-Rom-style) through the given points.
+ * Keeps line visually smooth while still going through every data point.
+ */
+function buildSmoothPath(points: { x: number; y: number }[]): string {
+  if (points.length === 0) return "";
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+
+  let d = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] || points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] || p2;
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+  }
+  return d;
 }
 
 export default function WorkoutChart({
   data,
-  labels,
   title,
   unit,
   color = "#3b82f6",
@@ -38,130 +78,111 @@ export default function WorkoutChart({
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const uid = useId().replace(/:/g, "");
+  const gradId = `wc-grad-${uid}`;
+  const glowId = `wc-glow-${uid}`;
+
+  const width = 800;
+  const height = 220;
+  const padding = { top: 16, right: 24, bottom: 24, left: 44 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+
+  const { points, dataMin, dataMax, range } = useMemo(() => {
+    if (data.length === 0) {
+      return { points: [] as { x: number; y: number; value: number; index: number }[], dataMin: 0, dataMax: 1, range: 1 };
+    }
+    const _min = minValue !== undefined ? minValue : Math.min(...data);
+    const _max = maxValue !== undefined ? maxValue : Math.max(...data);
+    const _range = _max - _min || 1;
+
+    const mapPoint = (value: number, index: number) => {
+      const x = data.length > 1
+        ? padding.left + (index / (data.length - 1)) * chartWidth
+        : padding.left + chartWidth / 2;
+      const normalized = invertYAxis
+        ? ((value - _min) / _range) * chartHeight
+        : chartHeight - ((value - _min) / _range) * chartHeight;
+      const y = padding.top + normalized;
+      return { x, y, value, index };
+    };
+
+    return {
+      points: data.map(mapPoint),
+      dataMin: _min,
+      dataMax: _max,
+      range: _range,
+    };
+  }, [data, minValue, maxValue, invertYAxis, chartWidth, chartHeight, padding.left, padding.top]);
 
   if (data.length === 0) {
     return (
-      <div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 ${className}`}>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">{title}</h3>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">No data available</p>
+      <div
+        className={cn(
+          "rounded-2xl border border-gray-200 dark:border-white/10",
+          "bg-white dark:bg-gray-900/60 p-6",
+          className
+        )}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">No data available</p>
       </div>
     );
   }
 
-  // Calculate min and max values
-  const dataMin = minValue !== undefined ? minValue : (data.length > 0 ? Math.min(...data) : 0);
-  const dataMax = maxValue !== undefined ? maxValue : (data.length > 0 ? Math.max(...data) : 100);
-  const range = dataMax - dataMin || 1; // Avoid division by zero
+  const linePath = buildSmoothPath(points);
+  const areaPath =
+    points.length > 0
+      ? `${linePath} L ${points[points.length - 1].x.toFixed(2)} ${(padding.top + chartHeight).toFixed(2)} L ${points[0].x.toFixed(2)} ${(padding.top + chartHeight).toFixed(2)} Z`
+      : "";
 
-  // Chart dimensions
-  const width = 800;
-  const height = 200;
-  const padding = 40;
-  const chartWidth = width - padding * 2;
-  const chartHeight = height - padding * 2;
-
-  // Generate points for the line
-  const points = data.length > 1
-    ? data.map((value, index) => {
-        const x = padding + (index / (data.length - 1)) * chartWidth;
-        // Invert Y-axis if needed (for pace: lower values at top, higher at bottom)
-        const normalizedValue = invertYAxis 
-          ? ((value - dataMin) / range) * chartHeight
-          : chartHeight - ((value - dataMin) / range) * chartHeight;
-        const y = padding + normalizedValue;
-        return { x, y, value, index };
-      })
-    : data.length === 1
-    ? (() => {
-        const normalizedValue = invertYAxis
-          ? ((data[0] - dataMin) / range) * chartHeight
-          : chartHeight - ((data[0] - dataMin) / range) * chartHeight;
-        return [{ x: padding + chartWidth / 2, y: padding + normalizedValue, value: data[0], index: 0 }];
-      })()
-    : [];
-
-  const pointsString = points.map(p => `${p.x},${p.y}`).join(" ");
-
-  // Generate grid lines
-  const gridLines = [];
-  const numGridLines = 5;
+  // Grid lines
+  const gridLines: { y: number; value: number }[] = [];
+  const numGridLines = 4;
   for (let i = 0; i <= numGridLines; i++) {
-    const y = padding + (chartHeight / numGridLines) * i;
-    // Invert value calculation if Y-axis is inverted
+    const y = padding.top + (chartHeight / numGridLines) * i;
     const value = invertYAxis
       ? dataMin + (range / numGridLines) * i
       : dataMax - (range / numGridLines) * i;
     gridLines.push({ y, value });
   }
 
-  // Format time
-  const formatTime = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-    }
-    return `${minutes}:${secs.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  // Handle pointer position (works for both mouse and touch)
   const handlePointerPosition = (clientX: number, clientY: number) => {
     if (!svgRef.current || !containerRef.current || points.length === 0) return;
 
     const rect = svgRef.current.getBoundingClientRect();
     const containerRect = containerRef.current.getBoundingClientRect();
     const pointerX = clientX - rect.left;
-    const pointerY = clientY - rect.top;
 
-    // Convert pointer position to SVG coordinates
     const svgX = (pointerX / rect.width) * width;
-    const svgY = (pointerY / rect.height) * height;
+    // Map x to nearest data index (linear spacing)
+    const idxRaw = ((svgX - padding.left) / chartWidth) * (points.length - 1);
+    const closestIndex = Math.round(Math.max(0, Math.min(points.length - 1, idxRaw)));
 
-    // Find the closest data point
-    let closestIndex = 0;
-    let minDistance = Infinity;
-
-    points.forEach((point, index) => {
-      const distance = Math.sqrt(Math.pow(point.x - svgX, 2) + Math.pow(point.y - svgY, 2));
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestIndex = index;
-      }
-    });
-
-    // Show tooltip if pointer is near the line (within reasonable distance)
-    // Use a larger threshold for touch devices
-    const threshold = 100; // pixels (increased for touch)
-    const closestPoint = points[closestIndex];
-    const distance = Math.sqrt(
-      Math.pow((closestPoint.x / width) * rect.width - pointerX, 2) +
-      Math.pow((closestPoint.y / height) * rect.height - pointerY, 2)
-    );
-
-    if (distance < threshold) {
-      setHoveredIndex(closestIndex);
-      setTooltipPosition({
-        x: clientX - containerRect.left,
-        y: clientY - containerRect.top,
-      });
-    } else {
+    if (svgX < padding.left - 10 || svgX > padding.left + chartWidth + 10) {
       setHoveredIndex(null);
       setTooltipPosition(null);
+      return;
     }
+
+    setHoveredIndex(closestIndex);
+    setTooltipPosition({
+      x: clientX - containerRect.left,
+      y: clientY - containerRect.top,
+    });
   };
 
-  // Handle mouse move
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) =>
     handlePointerPosition(e.clientX, e.clientY);
-  };
 
-  // Handle touch move (for mobile)
   const handleTouchMove = (e: React.TouchEvent<SVGSVGElement>) => {
-    e.preventDefault(); // Prevent scrolling when touching the chart
+    e.preventDefault();
     if (e.touches.length > 0) {
-      const touch = e.touches[0];
-      handlePointerPosition(touch.clientX, touch.clientY);
+      const t = e.touches[0];
+      handlePointerPosition(t.clientX, t.clientY);
     }
   };
 
@@ -171,11 +192,10 @@ export default function WorkoutChart({
   };
 
   const handleTouchEnd = () => {
-    // Keep tooltip visible briefly on touch end, then hide it
     setTimeout(() => {
       setHoveredIndex(null);
       setTooltipPosition(null);
-    }, 2000); // Hide after 2 seconds
+    }, 1500);
   };
 
   const hoveredPoint = hoveredIndex !== null ? points[hoveredIndex] : null;
@@ -183,93 +203,138 @@ export default function WorkoutChart({
   return (
     <div
       ref={containerRef}
-      className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 relative ${className}`}
+      className={cn(
+        "relative rounded-2xl border border-gray-200 dark:border-white/10",
+        "bg-white dark:bg-gray-900/60 p-6 shadow-sm",
+        className
+      )}
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-        <span className="text-sm text-gray-500 dark:text-gray-400">{unit}</span>
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="inline-block h-2.5 w-2.5 rounded-full"
+            style={{ backgroundColor: color }}
+          />
+          <h3 className="text-lg font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+            {title}
+          </h3>
+        </div>
+        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          {unit}
+        </span>
       </div>
-      <div className="overflow-x-auto">
+
+      <div className="overflow-hidden">
         <svg
           ref={svgRef}
           viewBox={`0 0 ${width} ${height}`}
           className="w-full cursor-crosshair touch-none"
           preserveAspectRatio="none"
-          style={{ minHeight: `${height}px`, touchAction: 'none' }}
+          style={{ minHeight: `${height}px`, touchAction: "none" }}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
+          <defs>
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+              <stop offset="60%" stopColor={color} stopOpacity="0.12" />
+              <stop offset="100%" stopColor={color} stopOpacity="0" />
+            </linearGradient>
+            <filter id={glowId} x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="2.5" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
           {/* Grid lines */}
           {gridLines.map((grid, index) => (
             <g key={index}>
               <line
-                x1={padding}
+                x1={padding.left}
                 y1={grid.y}
-                x2={width - padding}
+                x2={width - padding.right}
                 y2={grid.y}
                 stroke="currentColor"
                 strokeWidth="1"
-                className="text-gray-200 dark:text-gray-700"
-                opacity="0.5"
+                strokeDasharray="3 4"
+                className="text-gray-300/80 dark:text-white/10"
               />
               <text
-                x={padding - 10}
-                y={grid.y + 4}
+                x={padding.left - 8}
+                y={grid.y + 3}
                 textAnchor="end"
                 fontSize="10"
-                className="fill-gray-500 dark:fill-gray-400"
+                className="fill-gray-400 dark:fill-gray-500"
               >
-                {grid.value.toFixed(1)}
+                {grid.value.toFixed(grid.value > 99 ? 0 : 1)}
               </text>
             </g>
           ))}
 
-          {/* Chart line */}
-          <polyline
-            points={pointsString}
+          {/* Area fill */}
+          {areaPath && (
+            <motion.path
+              d={areaPath}
+              fill={`url(#${gradId})`}
+              initial={reduce ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            />
+          )}
+
+          {/* Smooth line */}
+          <motion.path
+            d={linePath}
             fill="none"
             stroke={color}
-            strokeWidth="2"
+            strokeWidth="2.25"
             strokeLinecap="round"
             strokeLinejoin="round"
+            filter={`url(#${glowId})`}
+            initial={reduce ? false : { pathLength: 0, opacity: 0 }}
+            animate={reduce ? undefined : { pathLength: 1, opacity: 1 }}
+            transition={{
+              pathLength: { duration: 1.1, ease: [0.22, 1, 0.36, 1] },
+              opacity: { duration: 0.3 },
+            }}
           />
 
-          {/* Area fill */}
-          {data.length > 0 && (
-            <polygon
-              points={`${padding},${padding + chartHeight} ${pointsString} ${width - padding},${padding + chartHeight}`}
-              fill={color}
-              opacity="0.1"
-            />
-          )}
-
-          {/* Hover indicator line */}
+          {/* Crosshair */}
           {hoveredPoint && (
-            <line
-              x1={hoveredPoint.x}
-              y1={padding}
-              x2={hoveredPoint.x}
-              y2={padding + chartHeight}
-              stroke={color}
-              strokeWidth="1"
-              strokeDasharray="4,4"
-              opacity="0.6"
-            />
-          )}
-
-          {/* Hover indicator point */}
-          {hoveredPoint && (
-            <circle
-              cx={hoveredPoint.x}
-              cy={hoveredPoint.y}
-              r="5"
-              fill={color}
-              stroke="white"
-              strokeWidth="2"
-              className="dark:stroke-gray-800"
-            />
+            <>
+              <line
+                x1={hoveredPoint.x}
+                y1={padding.top}
+                x2={hoveredPoint.x}
+                y2={padding.top + chartHeight}
+                stroke={color}
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                opacity="0.55"
+              />
+              <circle
+                cx={hoveredPoint.x}
+                cy={hoveredPoint.y}
+                r="6"
+                fill={color}
+                opacity="0.18"
+              />
+              <circle
+                cx={hoveredPoint.x}
+                cy={hoveredPoint.y}
+                r="3.5"
+                fill={color}
+                stroke="white"
+                strokeWidth="1.5"
+                className="dark:stroke-gray-900"
+              />
+            </>
           )}
         </svg>
       </div>
@@ -277,20 +342,31 @@ export default function WorkoutChart({
       {/* Tooltip */}
       {hoveredPoint && tooltipPosition && (
         <div
-          className="absolute z-10 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 px-3 py-2 rounded-lg shadow-lg text-sm pointer-events-none"
+          className={cn(
+            "absolute z-10 pointer-events-none",
+            "rounded-xl px-3 py-2 text-xs",
+            "bg-white/90 dark:bg-gray-900/85 backdrop-blur-md",
+            "border border-gray-200/80 dark:border-white/10",
+            "shadow-lg"
+          )}
           style={{
-            left: `${Math.min(tooltipPosition.x + 10, (containerRef.current?.offsetWidth || 0) - 200)}px`,
-            top: `${tooltipPosition.y - 50}px`,
-            transform: tooltipPosition.y < 50 ? 'translateY(0)' : 'translateY(-100%)',
+            left: `${Math.min(
+              Math.max(tooltipPosition.x + 12, 8),
+              (containerRef.current?.offsetWidth || 0) - 180
+            )}px`,
+            top: `${Math.max(tooltipPosition.y - 64, 8)}px`,
           }}
         >
-          <div className="font-semibold mb-1">{title}</div>
-          <div className="text-xs opacity-90">
+          <div className="font-semibold text-gray-900 dark:text-gray-100">{title}</div>
+          <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
             {timeData && timeData[hoveredPoint.index] !== undefined
-              ? `Time: ${formatTime(timeData[hoveredPoint.index])}`
-              : `Index: ${hoveredPoint.index + 1}`}
+              ? `Time · ${formatTime(timeData[hoveredPoint.index])}`
+              : `Point · ${hoveredPoint.index + 1}`}
           </div>
-          <div className="text-lg font-bold mt-1">
+          <div
+            className="mt-1 text-base font-bold tabular-nums"
+            style={{ color }}
+          >
             {formatValue ? formatValue(hoveredPoint.value) : `${hoveredPoint.value.toFixed(2)} ${unit}`}
           </div>
         </div>
@@ -298,4 +374,3 @@ export default function WorkoutChart({
     </div>
   );
 }
-
