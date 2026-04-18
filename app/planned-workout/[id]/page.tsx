@@ -264,11 +264,10 @@ function convertIntervalsToLaps(intervals: WorkoutInterval[]): Lap[] {
     if (isRest) {
       lapPace = 10;
       if (step.durationType === "DISTANCE" || step.durationType === "distance") {
-        lapDistance = step.durationValue / 1000;
-        lapDuration = lapDistance * lapPace * 60;
+        const kmForDuration = step.durationValue / 1000;
+        lapDuration = kmForDuration * lapPace * 60;
       } else if (step.durationType === "TIME" || step.durationType === "time") {
         lapDuration = step.durationValue;
-        lapDistance = lapDuration / (lapPace * 60);
       } else {
         return;
       }
@@ -288,9 +287,9 @@ function convertIntervalsToLaps(intervals: WorkoutInterval[]): Lap[] {
       }
     }
 
-    if (lapDistance > 0 && lapDuration > 0 && lapPace > 0) {
+    if (lapDuration > 0 && lapPace > 0 && (isRest || lapDistance > 0)) {
       laps.push({
-        lapDistanceInKilometers: lapDistance,
+        lapDistanceInKilometers: isRest ? 0 : lapDistance,
         lapDurationInSeconds: lapDuration,
         lapPaceInMinKm: lapPace,
         avgHeartRate: 0,
