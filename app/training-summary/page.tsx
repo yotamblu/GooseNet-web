@@ -294,18 +294,22 @@ function TrainingSummaryPageContent() {
     if (error && error.includes("date")) setError(null);
   };
 
-  /** Inclusive calendar days in the selected start/end range (YYYY-MM-DD inputs). */
-  const rangeInclusiveDays = useMemo(() => {
-    if (!startDate || !endDate) return 0;
-    const a = new Date(`${startDate}T12:00:00`);
-    const b = new Date(`${endDate}T12:00:00`);
-    if (isNaN(a.getTime()) || isNaN(b.getTime()) || a > b) return 0;
-    const utc1 = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
-    const utc2 = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
-    return Math.floor((utc2 - utc1) / 86400000) + 1;
-  }, [startDate, endDate]);
+  /**
+   * Days spanned for the Weekly/Daily chart toggle. Prefer the **loaded summary**
+   * dates (what the chart actually reflects) so the control still appears after
+   * refresh/session restore when inputs hydrate late or use a different shape
+   * than YYYY-MM-DD. Fall back to the date pickers before the first fetch.
+   */
+  const rangeInclusiveDaysForWeeklyToggle = useMemo(() => {
+    if (summary?.startDate && summary?.endDate) {
+      const n = inclusiveDayCountBetween(summary.startDate, summary.endDate);
+      if (n > 0) return n;
+    }
+    return inclusiveDayCountBetween(startDate, endDate);
+  }, [summary?.startDate, summary?.endDate, startDate, endDate]);
 
-  const rangeSpansMoreThanFourWeeks = rangeInclusiveDays > 28;
+  /** At least four full weeks (28 inclusive calendar days). */
+  const rangeSpansMoreThanFourWeeks = rangeInclusiveDaysForWeeklyToggle >= 28;
 
   useEffect(() => {
     if (!rangeSpansMoreThanFourWeeks && distanceChartMode === "weekly") {
@@ -1036,6 +1040,28 @@ function TrainingSummaryPageContent() {
 }
 
 // -- Helpers ---------------------------------------------------------------
+
+/**
+ * Inclusive calendar-day count between two date strings (YYYY-MM-DD, M/d/yyyy, or Date-parsable).
+ */
+function inclusiveDayCountBetween(startStr: string, endStr: string): number {
+  if (!startStr?.trim() || !endStr?.trim()) return 0;
+  const parseLocalDay = (s: string): Date | null => {
+    const t = s.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+      const d = new Date(`${t}T12:00:00`);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    const d = new Date(t);
+    return isNaN(d.getTime()) ? null : d;
+  };
+  const a = parseLocalDay(startStr);
+  const b = parseLocalDay(endStr);
+  if (!a || !b || a > b) return 0;
+  const utc1 = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+  const utc2 = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.floor((utc2 - utc1) / 86400000) + 1;
+}
 
 /** Upper bound for bar chart Y-axis: at least the data max, rounded to a readable step (1–2–5–10 × 10ⁿ). */
 function niceCeilForAxis(maxKm: number): number {
