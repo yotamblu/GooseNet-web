@@ -1,6 +1,16 @@
 import type { NextConfig } from "next";
 
+/** Exposed to the client so we can bust service-worker + Cache Storage after each deploy. */
+const NEXT_PUBLIC_BUILD_ID =
+  process.env.VERCEL_DEPLOYMENT_ID ||
+  process.env.VERCEL_GIT_COMMIT_SHA ||
+  "development";
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_BUILD_ID,
+  },
+
   turbopack: {},
 
   allowedDevOrigins: [
@@ -66,6 +76,10 @@ const nextConfig: NextConfig = {
           {
             key: "Service-Worker-Allowed",
             value: "/"
+          },
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate"
           }
         ]
       },
