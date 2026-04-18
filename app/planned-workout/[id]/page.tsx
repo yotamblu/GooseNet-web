@@ -322,6 +322,21 @@ function convertIntervalsToLaps(intervals: WorkoutInterval[]): Lap[] {
   return laps;
 }
 
+/** Larger type for short plans; scales down so long Garmin strings stay comfortable. */
+function workoutPlanReadableClass(charLength: number): string {
+  const mono = "font-mono tabular-nums break-words whitespace-pre-wrap text-gray-900 dark:text-gray-50";
+  if (charLength > 1200) {
+    return `${mono} text-sm sm:text-[15px] leading-relaxed`;
+  }
+  if (charLength > 600) {
+    return `${mono} text-sm sm:text-base leading-relaxed`;
+  }
+  if (charLength > 240) {
+    return `${mono} text-base sm:text-lg md:text-xl leading-relaxed`;
+  }
+  return `${mono} text-lg sm:text-xl md:text-2xl leading-snug sm:leading-relaxed`;
+}
+
 export default function PlannedWorkoutDetailPage() {
   const { user, loading: authLoading } = useAuth();
   const params = useParams();
@@ -432,12 +447,13 @@ export default function PlannedWorkoutDetailPage() {
   }
 
   const workout = workoutData.worokutObject;
+  const planJsonTrimmed = workoutData.plannedWorkoutJson?.trim() ?? "";
+  const planBodyClass = workoutPlanReadableClass(planJsonTrimmed.length);
 
   return (
     <AppShell
       eyebrow={workout.date || undefined}
       title={workout.workoutName || "Planned Workout"}
-      subtitle={workout.description || undefined}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Link href={backUrl}>
@@ -454,7 +470,7 @@ export default function PlannedWorkoutDetailPage() {
       }
       maxWidth="lg"
     >
-      {/* Hero — meta + stats */}
+      {/* Summary — directly under title: activity, people, distance / duration / steps */}
       <Card variant="glass" padding="lg" className="mb-8">
         <div className="flex flex-wrap items-center gap-2 mb-5">
           <Badge variant="brand" dot>
@@ -499,6 +515,38 @@ export default function PlannedWorkoutDetailPage() {
         </div>
       </Card>
 
+      {/* Garmin-style plan (readable size scales with length) */}
+      {planJsonTrimmed && (
+        <section className="mb-8">
+          <SectionHeading title="Workout Plan" description="Garmin-style serialized plan" />
+          <Card variant="glass" padding="lg" className="min-w-0">
+            <div className="w-full max-w-full overflow-x-auto scrollbar-thin">
+              <pre className={`${planBodyClass} m-0`}>{planJsonTrimmed}</pre>
+            </div>
+          </Card>
+        </section>
+      )}
+
+      {laps.length > 0 && (
+        <section className="mb-10">
+          <SectionHeading title="Pace Breakdown" description="Per-step pace visualization" />
+          <Card variant="glass" padding="md" className="min-w-0">
+            <div className="w-full max-w-full overflow-hidden">
+              <LapBarChart laps={laps} className="border-0 shadow-none p-0" />
+            </div>
+          </Card>
+        </section>
+      )}
+
+      {/* Plain-language note from coach / device (when present) */}
+      {workout.description?.trim() && (
+        <div className="mb-6 rounded-2xl border border-gray-200/80 bg-white/60 px-5 py-5 shadow-sm dark:border-white/10 dark:bg-white/[0.05] sm:mb-8 sm:px-7 sm:py-6">
+          <p className="text-lg font-medium leading-relaxed text-gray-900 sm:text-xl md:text-2xl dark:text-gray-50 break-words">
+            {workout.description.trim()}
+          </p>
+        </div>
+      )}
+
       {/* Intervals track */}
       {flatRows.length > 0 && (
         <section className="mb-10">
@@ -508,8 +556,8 @@ export default function PlannedWorkoutDetailPage() {
           />
           {structureTruncated && (
             <p className="mb-3 text-sm text-amber-700 dark:text-amber-300/90">
-              Showing the first {MAX_STRUCTURE_ROWS} steps of this plan. The full structure is available in the workout
-              plan JSON below.
+              Showing the first {MAX_STRUCTURE_ROWS} steps of this plan. The full serialized plan is in the Workout
+              Plan section above.
             </p>
           )}
           <div className="relative pl-6">
@@ -578,32 +626,6 @@ export default function PlannedWorkoutDetailPage() {
               })}
             </ol>
           </div>
-        </section>
-      )}
-
-      {/* Lap chart */}
-      {laps.length > 0 && (
-        <section className="mb-10">
-          <SectionHeading title="Pace Breakdown" description="Per-step pace visualization" />
-          <Card variant="glass" padding="md" className="min-w-0">
-            <div className="w-full max-w-full overflow-hidden">
-              <LapBarChart laps={laps} className="border-0 shadow-none p-0" />
-            </div>
-          </Card>
-        </section>
-      )}
-
-      {/* Raw JSON detail */}
-      {workoutData.plannedWorkoutJson && (
-        <section className="mb-10">
-          <SectionHeading title="Workout Plan" description="Garmin-style serialized plan" />
-          <Card variant="glass" padding="md" className="min-w-0">
-            <div className="w-full max-w-full overflow-x-auto scrollbar-thin">
-              <pre className="text-xs font-mono text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
-                {workoutData.plannedWorkoutJson}
-              </pre>
-            </div>
-          </Card>
         </section>
       )}
 
