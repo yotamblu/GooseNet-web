@@ -6,7 +6,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
@@ -27,6 +27,7 @@ import {
   Skeleton,
   fadeUp,
   stagger,
+  cn,
 } from "../components/ui";
 
 interface WorkoutLap {
@@ -79,6 +80,12 @@ function TrainingSummaryPageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [noAccess, setNoAccess] = useState(false);
+  /** Only offered when the selected range spans more than four weeks (see `rangeSpansMoreThanFourWeeks`). */
+  const [distanceChartMode, setDistanceChartMode] = useState<"daily" | "weekly">("daily");
+  /** Match LapBarChart: one tooltip + dim siblings while hovering. */
+  const [distanceBarHoverIndex, setDistanceBarHoverIndex] = useState<number | null>(null);
+  const [distanceTooltipCenterX, setDistanceTooltipCenterX] = useState<number | null>(null);
+  const distanceChartPlotRef = useRef<HTMLDivElement>(null);
 
   // Require authentication
   useRequireAuth();
@@ -287,6 +294,25 @@ function TrainingSummaryPageContent() {
     if (error && error.includes("date")) setError(null);
   };
 
+  /** Inclusive calendar days in the selected start/end range (YYYY-MM-DD inputs). */
+  const rangeInclusiveDays = useMemo(() => {
+    if (!startDate || !endDate) return 0;
+    const a = new Date(`${startDate}T12:00:00`);
+    const b = new Date(`${endDate}T12:00:00`);
+    if (isNaN(a.getTime()) || isNaN(b.getTime()) || a > b) return 0;
+    const utc1 = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+    const utc2 = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+    return Math.floor((utc2 - utc1) / 86400000) + 1;
+  }, [startDate, endDate]);
+
+  const rangeSpansMoreThanFourWeeks = rangeInclusiveDays > 28;
+
+  useEffect(() => {
+    if (!rangeSpansMoreThanFourWeeks && distanceChartMode === "weekly") {
+      setDistanceChartMode("daily");
+    }
+  }, [rangeSpansMoreThanFourWeeks, distanceChartMode]);
+
   // -- Derived charts from allWorkouts -----------------------------------
   const byDay = useMemo(() => {
     if (!summary?.allWorkouts?.length) return [] as { date: string; km: number; label: string }[];
@@ -308,7 +334,53 @@ function TrainingSummaryPageContent() {
     return entries;
   }, [summary]);
 
-  const distByDayMax = byDay.reduce((m, d) => Math.max(m, d.km), 0) || 1;
+  /** Monday-start weeks from range start through range end; includes weeks with 0 km. */
+  const byWeek = useMemo(() => {
+    if (!summary?.allWorkouts?.length || !startDate || !endDate) {
+      return [] as { date: string; km: number; label: string }[];
+    }
+    const rangeStart = new Date(`${startDate}T12:00:00`);
+    const rangeEnd = new Date(`${endDate}T12:00:00`);
+    if (isNaN(rangeStart.getTime()) || isNaN(rangeEnd.getTime()) || rangeStart > rangeEnd) {
+      return [];
+    }
+
+    const map = new Map<string, number>();
+    for (const w of summary.allWorkouts) {
+      const key = weekStartKeyFromWorkoutDate(w.workoutDate);
+      if (!key) continue;
+      map.set(key, (map.get(key) ?? 0) + w.workoutDistanceInMeters / 1000);
+    }
+
+    const rows: { date: string; km: number; label: string }[] = [];
+    let w = startOfWeekMonday(rangeStart);
+    const lastWeekStart = startOfWeekMonday(rangeEnd);
+    while (w <= lastWeekStart) {
+      const key = toIsoDateLocal(w);
+      const km = map.get(key) ?? 0;
+      rows.push({
+        date: key,
+        km,
+        label: w.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      });
+      const next = new Date(w.getFullYear(), w.getMonth(), w.getDate() + 7);
+      w = next;
+    }
+    return rows;
+  }, [summary, startDate, endDate]);
+
+  const distanceChartData = distanceChartMode === "weekly" ? byWeek : byDay;
+  const distChartMax = distanceChartData.reduce((m, d) => Math.max(m, d.km), 0) || 1;
+  const distanceYScaleMax = useMemo(() => niceCeilForAxis(distChartMax), [distChartMax]);
+  const distanceYAxisTicks = useMemo(
+    () => [0, 0.25, 0.5, 0.75, 1].map((t) => t * distanceYScaleMax),
+    [distanceYScaleMax]
+  );
+
+  useEffect(() => {
+    setDistanceBarHoverIndex(null);
+    setDistanceTooltipCenterX(null);
+  }, [distanceChartMode, summary]);
 
   const paceStats = useMemo(() => {
     const pts = (summary?.allWorkouts ?? [])
@@ -556,50 +628,240 @@ function TrainingSummaryPageContent() {
             {/* Distance by day */}
             <Card variant="glass" padding="lg" className="min-w-0">
               <CardHeader>
-                <div className="min-w-0">
-                  <CardTitle>Distance by day</CardTitle>
-                  <CardDescription>
-                    Kilometres per day across the selected range
-                  </CardDescription>
+                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <CardTitle>
+                      {distanceChartMode === "weekly" ? "Distance by week" : "Distance by day"}
+                    </CardTitle>
+                    <CardDescription>
+                      {distanceChartMode === "weekly"
+                        ? "Kilometres per week (Monday–Sunday), summed across the selected range"
+                        : "Kilometres per day across the selected range"}
+                    </CardDescription>
+                  </div>
+                  {rangeSpansMoreThanFourWeeks && (
+                    <div className="flex shrink-0 items-center gap-1 rounded-xl border border-gray-200/80 bg-white/50 p-1 dark:border-white/10 dark:bg-white/5">
+                      <button
+                        type="button"
+                        onClick={() => setDistanceChartMode("daily")}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                          distanceChartMode === "daily"
+                            ? "bg-blue-600 text-white shadow-sm dark:bg-blue-500"
+                            : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10"
+                        }`}
+                      >
+                        Daily
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDistanceChartMode("weekly")}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                          distanceChartMode === "weekly"
+                            ? "bg-blue-600 text-white shadow-sm dark:bg-blue-500"
+                            : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10"
+                        }`}
+                      >
+                        Weekly
+                      </button>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
-              {byDay.length > 0 ? (
-                <div className="w-full max-w-full overflow-hidden rounded-xl">
-                  <div className="overflow-x-auto scrollbar-thin pb-2">
-                    <div className="flex w-max items-stretch gap-1.5">
-                    {byDay.map((d, i) => {
-                      const h = d.km > 0 ? Math.max(2, (d.km / distByDayMax) * 100) : 0;
-                      return (
-                        <div
-                          key={d.date}
-                          className="flex min-w-[28px] flex-col items-center gap-2"
-                        >
-                        {/* Bar area: owns its own fixed height so % heights
-                            resolve reliably (items-stretch won't help here
-                            because we may overflow horizontally). */}
-                        <div className="relative flex h-44 w-full items-end">
-                          <motion.div
-                            initial={reduce ? false : { height: 0, opacity: 0 }}
-                            animate={{ height: `${h}%`, opacity: 1 }}
-                            transition={
-                              reduce
-                                ? { duration: 0 }
-                                : {
-                                    duration: 0.7,
-                                    delay: Math.min(0.5, 0.015 * i),
-                                    ease: [0.22, 1, 0.36, 1],
-                                  }
-                            }
-                            className="w-full rounded-t-md bg-gradient-to-t from-blue-500/80 via-indigo-500/70 to-purple-500/70"
-                            title={`${d.km.toFixed(2)} km — ${d.label}`}
-                          />
+              {distanceChartData.length > 0 ? (
+                <div
+                  className="w-full max-w-full overflow-hidden rounded-xl border border-gray-200/50 bg-gray-50/30 dark:border-white/10 dark:bg-white/[0.02]"
+                  aria-label="Distance chart, vertical axis in kilometres"
+                >
+                  <div className="flex min-w-0 gap-0">
+                    <div className="flex w-11 shrink-0 flex-col border-r border-gray-200/60 dark:border-white/10 sm:w-12">
+                      <div className="relative h-44 w-full pr-1">
+                        {distanceYAxisTicks.map((tick, ti) => {
+                          const pct =
+                            distanceYScaleMax > 0 ? (tick / distanceYScaleMax) * 100 : 0;
+                          return (
+                            <span
+                              key={`y-tick-${ti}-${tick}`}
+                              className="absolute right-1 -translate-y-1/2 text-[10px] font-medium tabular-nums text-gray-500 dark:text-gray-400"
+                              style={{ bottom: `${pct}%` }}
+                            >
+                              {formatKmAxisLabel(tick)}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      <div className="pt-1 text-center text-[9px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                        km
+                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1 overflow-x-auto scrollbar-thin">
+                      <div className="w-max min-w-full px-1 pb-1">
+                        <div ref={distanceChartPlotRef} className="relative h-44">
+                          <div className="pointer-events-none absolute inset-0" aria-hidden>
+                            {distanceYAxisTicks.map((tick, ti) => {
+                              const pct =
+                                distanceYScaleMax > 0 ? (tick / distanceYScaleMax) * 100 : 0;
+                              return (
+                                <div
+                                  key={`grid-${ti}-${tick}`}
+                                  className="absolute left-0 right-0 h-px bg-gray-200/70 dark:bg-white/10"
+                                  style={{ bottom: `${pct}%` }}
+                                />
+                              );
+                            })}
+                          </div>
+
+                          {distanceBarHoverIndex != null &&
+                            distanceTooltipCenterX != null &&
+                            distanceChartData[distanceBarHoverIndex] && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.15 }}
+                                className={cn(
+                                  "pointer-events-none absolute z-10 min-w-[150px] max-w-[min(240px,calc(100vw-4rem))] -translate-x-1/2",
+                                  "rounded-lg border border-gray-200/80 dark:border-white/10",
+                                  "bg-white/95 dark:bg-gray-900/90 backdrop-blur-md",
+                                  "px-3 py-2 text-xs shadow-lg"
+                                )}
+                                style={{
+                                  left: distanceTooltipCenterX,
+                                  top: 0,
+                                }}
+                                role="tooltip"
+                              >
+                                {(() => {
+                                  const d = distanceChartData[distanceBarHoverIndex]!;
+                                  return (
+                                    <>
+                                      <div className="font-semibold text-gray-900 dark:text-gray-100">
+                                        {distanceChartMode === "weekly"
+                                          ? `Week of ${d.label}`
+                                          : d.label}
+                                      </div>
+                                      <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-gray-600 dark:text-gray-300">
+                                        <span className="text-gray-500 dark:text-gray-400">
+                                          Distance
+                                        </span>
+                                        <span className="text-right tabular-nums font-semibold text-blue-600 dark:text-blue-400">
+                                          {d.km.toFixed(2)} km
+                                        </span>
+                                        <span className="text-gray-500 dark:text-gray-400">
+                                          Period
+                                        </span>
+                                        <span className="text-right tabular-nums">
+                                          {distanceChartMode === "weekly"
+                                            ? "Weekly total"
+                                            : "Daily total"}
+                                        </span>
+                                        <span className="text-gray-500 dark:text-gray-400">
+                                          Chart scale
+                                        </span>
+                                        <span className="text-right tabular-nums">
+                                          {formatKmAxisLabel(distanceYScaleMax)} km max
+                                        </span>
+                                      </div>
+                                    </>
+                                  );
+                                })()}
+                              </motion.div>
+                            )}
+
+                          <div
+                            className="relative z-[1] flex h-44 cursor-pointer select-none items-end gap-1.5"
+                            onMouseLeave={() => {
+                              setDistanceBarHoverIndex(null);
+                              setDistanceTooltipCenterX(null);
+                            }}
+                          >
+                            {distanceChartData.map((d, i) => {
+                              const barKey = `${distanceChartMode}-${d.date}`;
+                              const colMin =
+                                distanceChartMode === "weekly" ? "min-w-[40px]" : "min-w-[28px]";
+                              const h =
+                                d.km > 0
+                                  ? Math.max(2, (d.km / distanceYScaleMax) * 100)
+                                  : 0;
+                              const isHovered = distanceBarHoverIndex === i;
+                              const dim =
+                                distanceBarHoverIndex != null && !isHovered;
+                              return (
+                                <div
+                                  key={barKey}
+                                  tabIndex={0}
+                                  aria-label={`${distanceChartMode === "weekly" ? "Week" : "Day"} ${d.label}: ${d.km.toFixed(2)} kilometres`}
+                                  className={cn(
+                                    "flex h-full flex-col items-stretch justify-end outline-none",
+                                    "focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900",
+                                    colMin
+                                  )}
+                                  onMouseEnter={(e) => {
+                                    const plot = distanceChartPlotRef.current;
+                                    if (!plot) return;
+                                    const tr = e.currentTarget.getBoundingClientRect();
+                                    const pr = plot.getBoundingClientRect();
+                                    setDistanceBarHoverIndex(i);
+                                    setDistanceTooltipCenterX(
+                                      tr.left - pr.left + tr.width / 2
+                                    );
+                                  }}
+                                  onFocus={(e) => {
+                                    const plot = distanceChartPlotRef.current;
+                                    if (!plot) return;
+                                    const tr = e.currentTarget.getBoundingClientRect();
+                                    const pr = plot.getBoundingClientRect();
+                                    setDistanceBarHoverIndex(i);
+                                    setDistanceTooltipCenterX(
+                                      tr.left - pr.left + tr.width / 2
+                                    );
+                                  }}
+                                >
+                                  <div
+                                    className={cn(
+                                      "relative flex w-full flex-1 flex-col justify-end transition-opacity duration-200",
+                                      dim && "opacity-55"
+                                    )}
+                                  >
+                                    <motion.div
+                                      initial={reduce ? false : { height: 0, opacity: 0 }}
+                                      animate={{ height: `${h}%`, opacity: 1 }}
+                                      transition={
+                                        reduce
+                                          ? { duration: 0 }
+                                          : {
+                                              duration: 0.7,
+                                              delay: Math.min(0.5, 0.015 * i),
+                                              ease: [0.22, 1, 0.36, 1],
+                                            }
+                                      }
+                                      className={cn(
+                                        "w-full min-h-[2px] rounded-t-md bg-gradient-to-t from-blue-500/80 via-indigo-500/70 to-purple-500/70",
+                                        "origin-bottom overflow-hidden transition-[filter] duration-200",
+                                        isHovered &&
+                                          "shadow-[0_0_0_2px_rgba(59,130,246,0.35)]"
+                                      )}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                        <div className="truncate text-[10px] font-medium text-gray-500 dark:text-gray-400">
-                          {d.label}
+                        <div className="flex gap-1.5 pt-1">
+                          {distanceChartData.map((d) => {
+                            const barKey = `${distanceChartMode}-${d.date}`;
+                            const colMin =
+                              distanceChartMode === "weekly" ? "min-w-[40px]" : "min-w-[28px]";
+                            return (
+                              <div
+                                key={`${barKey}-x`}
+                                className={`max-w-[52px] truncate text-center text-[10px] font-medium text-gray-500 dark:text-gray-400 ${colMin}`}
+                              >
+                                {d.label}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-                    );
-                  })}
                     </div>
                   </div>
                 </div>
@@ -774,6 +1036,51 @@ function TrainingSummaryPageContent() {
 }
 
 // -- Helpers ---------------------------------------------------------------
+
+/** Upper bound for bar chart Y-axis: at least the data max, rounded to a readable step (1–2–5–10 × 10ⁿ). */
+function niceCeilForAxis(maxKm: number): number {
+  if (!maxKm || maxKm <= 0) return 1;
+  const padded = maxKm * 1.05;
+  const exp = Math.floor(Math.log10(padded));
+  const pow = 10 ** exp;
+  const n = padded / pow;
+  let nice: number;
+  if (n <= 1) nice = 1;
+  else if (n <= 2) nice = 2;
+  else if (n <= 5) nice = 5;
+  else nice = 10;
+  return nice * pow;
+}
+
+function formatKmAxisLabel(km: number): string {
+  if (km <= 0) return "0";
+  if (km < 1) return km.toFixed(2);
+  if (km < 10) return km.toFixed(1);
+  return String(Math.round(km));
+}
+
+/** Monday 00:00 local of the week containing `d`. */
+function startOfWeekMonday(d: Date): Date {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const day = x.getDay();
+  const diff = (day + 6) % 7;
+  x.setDate(x.getDate() - diff);
+  return x;
+}
+
+function toIsoDateLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** YYYY-MM-DD Monday of the week for a workout date string. */
+function weekStartKeyFromWorkoutDate(workoutDate: string): string | null {
+  const parsed = new Date(workoutDate);
+  if (isNaN(parsed.getTime())) return null;
+  return toIsoDateLocal(startOfWeekMonday(parsed));
+}
 
 function StatPill({
   label,
