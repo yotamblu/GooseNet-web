@@ -483,21 +483,6 @@ function RunningWorkoutFormPageContent() {
             as="h3"
             title="Workout Structure"
             description="Each block is an interval that can repeat. Add run or rest steps inside."
-            actions={
-              <Button
-                type="button"
-                variant="gradient"
-                size="sm"
-                onClick={addIntervalBlock}
-                iconLeft={
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.4}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
-                }
-              >
-                Add Interval
-              </Button>
-            }
           />
 
           {errors.blocks && (
@@ -668,6 +653,22 @@ function RunningWorkoutFormPageContent() {
               </div>
             )}
           </motion.div>
+
+          <div className="mt-6 pt-5 border-t border-gray-200 dark:border-white/10">
+            <Button
+              type="button"
+              variant="gradient"
+              className="w-full"
+              onClick={addIntervalBlock}
+              iconLeft={
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.4}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+              }
+            >
+              Add Interval
+            </Button>
+          </div>
         </Card>
 
         {/* Sticky save bar */}
