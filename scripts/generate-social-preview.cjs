@@ -1,14 +1,13 @@
 /**
- * Builds public/preview.png at 1200×630 (~1.91:1) for Open Graph / X large cards.
- * The source graphic is 3:2; social surfaces expect a wider frame, so this composites
- * the artwork (fit inside) over a blurred full-bleed version to avoid platform cropping.
+ * Builds public/preview.png at 1200×628 (2:1) for Open Graph / X summary_large_image.
+ * Composites the artwork (fit inside) over a blurred full-bleed version to avoid platform cropping.
  */
 const fs = require("fs");
 const path = require("path");
 const sharp = require("sharp");
 
 const W = 1200;
-const H = 630;
+const H = 628;
 const outPath = path.join(__dirname, "..", "public", "preview.png");
 
 async function main() {

@@ -1,7 +1,5 @@
 /**
- * WhyGooseNet
- *
- * Benefit grid with icon cards. Hover lifts + gradient-border highlight.
+ * WhyGooseNet — coach-specific benefits; avoid generic "platform" language.
  */
 
 "use client";
@@ -18,40 +16,36 @@ type Point = {
 
 const POINTS: Point[] = [
   {
-    title: "Running-only focus",
+    title: "Built for high school mileage reality",
     description:
-      "No gyms, no generic tracking — every feature is designed around how runners actually train.",
+      "Budgets are zero, kids forget to text, and Sunday night is when you actually look at the roster. GooseNet meets you there.",
     accent: "blue",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
-        <circle cx="7" cy="5" r="2" strokeLinecap="round" />
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M5 22l3-6 4 1 2-5m0 0l4 3 3-5M10 12l-3-4"
-        />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
+        <circle cx="12" cy="12" r="9" />
       </svg>
     ),
   },
   {
-    title: "Built around real coaching workflows",
+    title: "Injury signal before the DNF",
     description:
-      "Designed with coaches who write training, not software designers guessing.",
-    accent: "purple",
+      "Volume jumps show up next to pace and HR — the same warning lights you’d squint at on a spreadsheet, without building one.",
+    accent: "rose",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
-          d="M4 7h16M4 12h10M4 17h16"
+          d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"
         />
       </svg>
     ),
   },
   {
-    title: "Garmin-native data",
+    title: "Garmin-native, not CSV theatre",
     description:
-      "Not a CSV import, not a third-party fetch — a direct, two-way Garmin integration.",
+      "We read what already came off the watch — repeats, lap splits, heart rate — and park it beside what you assigned.",
     accent: "teal",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
@@ -64,46 +58,16 @@ const POINTS: Point[] = [
     ),
   },
   {
-    title: "Performance, not general fitness",
+    title: "Free for coaches. Full stop.",
     description:
-      "Pace, HR, consistency, lap analysis — metrics that actually drive improvement.",
-    accent: "rose",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M12 8V3m0 0L9 6m3-3l3 3M4 12h16M6 20h12a2 2 0 002-2v-4H4v4a2 2 0 002 2z"
-        />
-      </svg>
-    ),
-  },
-  {
-    title: "Clean, shareable insights",
-    description:
-      "Every session ends with a crisp summary — the kind worth sharing with your coach or squad.",
+      "No trial cliff, no “coach tier”. If you’re leading a team, you get the same dashboard as everyone else.",
     accent: "amber",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
-          d="M8.684 13.342a3 3 0 100-2.684m0 2.684a3 3 0 100 2.684m0-5.368l6.632-3.316m-6.632 8.684l6.632 3.316m0-11a3 3 0 106 0 3 3 0 00-6 0zm0 11a3 3 0 106 0 3 3 0 00-6 0z"
-        />
-      </svg>
-    ),
-  },
-  {
-    title: "Private by design",
-    description:
-      "Your training is yours. Share deliberately with your coach and selected athletes — nothing public by default.",
-    accent: "blue",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M12 15v2m0 0v2m0-2h2m-2 0h-2m6-8V7a4 4 0 10-8 0v2M5 11h14a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7a2 2 0 012-2z"
+          d="M12 8v4m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
         />
       </svg>
     ),
@@ -120,7 +84,7 @@ const ACCENT_ICON_BG: Record<Point["accent"], string> = {
 
 export default function WhyGooseNet() {
   return (
-    <section className="relative w-full max-w-full overflow-hidden bg-gray-50 py-16 sm:py-24 lg:py-32 dark:bg-gray-950">
+    <section className="relative w-full max-w-full overflow-hidden bg-gray-50 py-24 sm:py-32 lg:py-44 dark:bg-gray-950">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -139,9 +103,10 @@ export default function WhyGooseNet() {
           <motion.div variants={fadeUp}>
             <SectionHeading
               center
-              eyebrow="Why GooseNet"
-              title="A platform built for runners who take training seriously."
-              description="Every decision in the app — from workout authoring to post-run breakdowns — is made for the way coaches and athletes actually work."
+              variant="marketing"
+              eyebrow="Why coaches care"
+              title="Because screenshots don’t bend when a kid doubles their mileage."
+              description="GooseNet isn’t another fitness feed. It’s the place you go when you need the honest file — from Garmin, for every athlete you coach."
             />
           </motion.div>
 
@@ -150,7 +115,7 @@ export default function WhyGooseNet() {
             initial="hidden"
             whileInView="show"
             viewport={inViewOnce}
-            className="mx-auto mt-10 sm:mt-14 grid w-full max-w-2xl grid-cols-1 gap-5 sm:grid-cols-2 lg:max-w-none lg:grid-cols-3"
+            className="mx-auto mt-10 sm:mt-14 grid w-full max-w-2xl grid-cols-1 gap-5 sm:max-w-none sm:grid-cols-2"
           >
             {POINTS.map((p) => (
               <motion.li key={p.title} variants={fadeUp}>
@@ -171,10 +136,10 @@ export default function WhyGooseNet() {
                     >
                       <span className="h-6 w-6">{p.icon}</span>
                     </div>
-                    <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                    <h3 className="text-base font-semibold text-gray-900 sm:text-lg dark:text-gray-100">
                       {p.title}
                     </h3>
-                    <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                    <p className="mt-2 text-sm leading-7 text-gray-600 sm:text-base sm:leading-8 dark:text-gray-400">
                       {p.description}
                     </p>
                   </div>

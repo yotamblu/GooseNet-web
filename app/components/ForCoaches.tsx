@@ -1,9 +1,5 @@
 /**
- * ForCoaches
- *
- * Two-column feature section for coaches. Coach demo panel on the left,
- * headline + icon-feature list on the right. Scroll-triggered fade-up with
- * staggered children.
+ * ForCoaches — coach value props ordered: injury signal, accountability, time saved.
  */
 
 "use client";
@@ -26,9 +22,42 @@ type Feature = {
 
 const FEATURES: Feature[] = [
   {
-    title: "Build structured workouts",
+    title: "Catch load spikes early",
     description:
-      "Author intervals, pace zones, and rest in a clean, reusable workout library.",
+      "When weekly volume jumps, you see it in the same charts as pace and HR — before a kid texts you that something hurts.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M12 9v4m0 4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
+        />
+      </svg>
+    ),
+  },
+  {
+    title: "Accountability without nagging",
+    description:
+      "Athletes know you can open their Garmin-backed file anytime. Compliance stops being a personality contest.",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+        />
+      </svg>
+    ),
+  },
+  {
+    title: "Structured workouts to Garmin",
+    description:
+      "Build tempo, repeats, and recovery the way you already think — then sync straight to their watch.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <path
@@ -40,48 +69,15 @@ const FEATURES: Feature[] = [
     ),
   },
   {
-    title: "Assign to any athlete",
+    title: "Reclaim Sunday nights",
     description:
-      "One click to deliver the session. Syncs straight to their Garmin.",
+      "No more screenshot scavenger hunt after the group long run. The data is already in GooseNet.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
-          d="M5 12h14M13 5l7 7-7 7"
-        />
-      </svg>
-    ),
-  },
-  {
-    title: "Review real performance",
-    description:
-      "Pace, HR, laps, elevation — not screenshots. See exactly how it was executed.",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-        />
-      </svg>
-    ),
-  },
-  {
-    title: "Coach with data, not guesses",
-    description:
-      "Surface consistency, effort, and trends to give feedback that actually lands.",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M3 12l3-3 4 4 5-5 6 6"
-        />
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M14 8h7v7"
+          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
         />
       </svg>
     ),
@@ -92,7 +88,7 @@ export default function ForCoaches() {
   return (
     <section
       id="for-coaches"
-      className="relative w-full max-w-full overflow-hidden bg-white py-16 sm:py-24 lg:py-32 dark:bg-gray-900"
+      className="relative w-full max-w-full overflow-hidden bg-white py-24 sm:py-32 lg:py-44 dark:bg-gray-900"
     >
       <div
         aria-hidden
@@ -111,21 +107,20 @@ export default function ForCoaches() {
           viewport={inViewOnce}
           className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16"
         >
-          {/* Visual (left) */}
           <motion.div variants={fadeUp} className="lg:pr-4">
             <CoachDemoPanel />
           </motion.div>
 
-          {/* Copy (right) */}
           <motion.div variants={fadeUp}>
             <Badge variant="brand" size="sm" className="mb-4">
-              For coaches
+              For XC &amp; track coaches
             </Badge>
 
             <SectionHeading
               as="h2"
-              title="Plan, assign, and analyze — all in one place."
-              description="Stop triangulating between Excel, chat threads, and screenshots. Build structured sessions, ship them to your athletes' Garmins, and review real performance data side-by-side."
+              variant="marketing"
+              title="Stop guessing what your athletes actually ran."
+              description="GooseNet is the free dashboard that pulls Garmin sessions automatically — so you can spot red flags, hold the line on training, and skip the weekly screenshot chase."
             />
 
             <motion.ul
@@ -144,10 +139,10 @@ export default function ForCoaches() {
                   <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 text-white shadow-md shadow-purple-500/25">
                     <span className="h-5 w-5">{f.icon}</span>
                   </div>
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  <h3 className="text-base font-semibold text-gray-900 sm:text-lg dark:text-gray-100">
                     {f.title}
                   </h3>
-                  <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                  <p className="mt-1 text-sm leading-7 text-gray-600 sm:text-base sm:leading-8 dark:text-gray-400">
                     {f.description}
                   </p>
                 </motion.li>

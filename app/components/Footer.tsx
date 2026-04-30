@@ -14,7 +14,8 @@ const COLUMNS: FooterColumn[] = [
   {
     title: "Product",
     links: [
-      { label: "How It Works", href: "/#how-it-works" },
+      { label: "Dashboard preview", href: "/#dashboard-preview" },
+      { label: "How sync works", href: "/#demo" },
       { label: "For Athletes", href: "/#for-athletes" },
       { label: "For Coaches", href: "/#for-coaches" },
       { label: "Dashboard", href: "/dashboard" },
@@ -42,7 +43,7 @@ const COLUMNS: FooterColumn[] = [
 
 function FooterLinkItem({ link }: { link: FooterLink }) {
   const base =
-    "group relative inline-flex items-center text-sm text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-white";
+    "group relative inline-flex items-center text-xs text-gray-600 dark:text-gray-400 transition-colors hover:text-gray-900 dark:hover:text-white";
   const underline = (
     <span
       aria-hidden
@@ -86,12 +87,12 @@ export default function Footer() {
                 height={28}
                 className="h-7 w-7 object-contain"
               />
-              <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50">
+              <span className="text-base font-bold tracking-tight text-gray-900 dark:text-gray-50">
                 GooseNet
               </span>
             </Link>
-            <p className="mt-3 max-w-xs text-sm text-gray-600 dark:text-gray-400">
-              Train smarter. Run stronger. Together. Structured workouts, real data, seamless Garmin integration.
+            <p className="mt-3 max-w-xs text-xs text-gray-600 dark:text-gray-400">
+              Stop chasing Garmin screenshots. Every athlete&apos;s load, automatically — free for coaches, forever.
             </p>
             <div className="mt-5 flex items-center gap-3">
               <a
@@ -134,7 +135,8 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} GooseNet. All rights reserved.
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-500 break-words text-center sm:text-right">
-            Built for runners. <span className="text-gradient-brand font-semibold">Powered by data.</span>
+            Built by a runner.{" "}
+            <span className="text-gradient-brand font-semibold">Powered by your athletes&apos; real Garmin files.</span>
           </p>
         </div>
       </div>

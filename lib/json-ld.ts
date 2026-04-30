@@ -13,7 +13,7 @@ export const ORGANIZATION_JSON_LD = {
   logo: `${SITE_URL}/logo/goosenet_logo.png`,
   sameAs: ["https://github.com/yotamblu/GooseNet-web"],
   description:
-    "GooseNet connects runners and coaches through structured workouts, real performance data, and seamless Garmin integration.",
+    "Free dashboard for track and XC coaches: see every athlete's Garmin load automatically — no logins for athletes, no screenshots, no nagging.",
 } as const;
 
 export const WEBSITE_JSON_LD = {
@@ -22,54 +22,54 @@ export const WEBSITE_JSON_LD = {
   name: "GooseNet",
   url: SITE_URL,
   description:
-    "GooseNet connects runners and coaches through structured workouts, real performance data, and seamless Garmin integration. Built for real running training.",
+    "Stop chasing athletes for Garmin screenshots. GooseNet shows coaches every athlete's training load automatically. Free for coaches forever.",
 } as const;
 
 export const FAQ_ITEMS: { question: string; answer: string }[] = [
   {
     question: "What is GooseNet?",
     answer:
-      "GooseNet is a running platform that connects runners and coaches through structured workouts, real performance data from Garmin devices, and tools to assign, sync, and analyze training.",
+      "GooseNet is a free dashboard for high school and club running coaches. After athletes link Garmin once, you see their real distance, pace, heart rate, and laps — the same file they ran — without texting for screenshots.",
   },
   {
     question: "How does Garmin integration work?",
     answer:
-      "You link your Garmin account once. Workouts assigned by your coach sync to your Garmin, and when you complete them, your activity data (pace, heart rate, laps) syncs back to GooseNet for review.",
+      "Athletes authenticate with Google, then connect their Garmin account through the same OAuth flow you’d use on garmin.com. Completed activities sync into GooseNet so coaches can review training summaries and individual sessions.",
   },
   {
     question: "Who is GooseNet for?",
     answer:
-      "GooseNet is for runners and running coaches who want structured training with real data: coaches who assign workouts and review execution, and athletes who train with a plan and sync from Garmin.",
+      "Cross country and track coaches who assign structured workouts and need honest mileage data. Athletes keep training on their watches; coaches keep everyone accountable from one dashboard.",
   },
   {
     question: "How do I connect with my coach?",
     answer:
-      "Sign up as an athlete, then use the coach connection page or the link/code your coach shares. Once connected, you can receive and sync assigned workouts and share completed sessions.",
+      "Sign up as an athlete with Google, enter the invite code your coach shares, then link Garmin from the dashboard. Coaches invite athletes from their own GooseNet account.",
   },
   {
     question: "What kind of workouts can coaches create?",
     answer:
-      "Coaches can create structured running workouts with intervals, distances, paces, and rest. Workouts sync to athletes' Garmin devices and completed sessions show pace, heart rate, and lap-by-lap data.",
+      "Structured running sessions with warm-ups, tempo blocks, repeats, and cool-downs. Plans can sync to Garmin so athletes execute exactly what you wrote, then you review the completed file automatically.",
   },
   {
     question: "Is GooseNet free?",
     answer:
-      "GooseNet offers a focused running and coaching experience. Check the signup and dashboard for current plans and features.",
+      "Yes — free for coaches, forever. No credit card, no trial, and no paywall for the coaching dashboard. Athletes link their own Garmin accounts at no cost.",
   },
 ];
 
 export const HOWTO_STEPS = [
   {
-    name: "Connect Garmin",
-    text: "Link your Garmin account to sync workouts and performance data automatically.",
+    name: "Athletes link Garmin once",
+    text: "Connect a Garmin account through OAuth so every completed run flows into GooseNet without manual uploads.",
   },
   {
-    name: "Create or receive structured workouts",
-    text: "Coaches build detailed workout plans. Athletes receive them instantly, ready to sync.",
+    name: "Coach writes the structured workout",
+    text: "Author intervals, pacing targets, and recovery, then assign the session to the athletes who need it.",
   },
   {
-    name: "Train, sync, and analyze performance",
-    text: "Execute workouts on your Garmin, then review detailed metrics and share insights with your coach.",
+    name: "Review the honest training file together",
+    text: "After the workout, pace, heart rate, and lap splits appear automatically — no screenshot threads.",
   },
 ] as const;
 
@@ -92,9 +92,9 @@ export function getHowToJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "HowTo",
-    name: "How to train with GooseNet",
+    name: "How coaches use GooseNet with Garmin",
     description:
-      "A straightforward workflow for runners and coaches: connect Garmin, create or receive structured workouts, then train, sync, and analyze performance.",
+      "Link Garmin once, assign structured workouts, then review every athlete's completed session without chasing screenshots.",
     step: HOWTO_STEPS.map((step, index) => ({
       "@type": "HowToStep",
       position: index + 1,
