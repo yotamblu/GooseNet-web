@@ -2,7 +2,7 @@
  * FAQSection
  *
  * Accordion with smooth height + opacity animation via `AnimatePresence`.
- * Consumes `FAQ_ITEMS` from `lib/json-ld` (unchanged copy).
+ * Consumes `FAQ_ITEMS` from `lib/json-ld` (visible copy matches FAQ schema).
  */
 
 "use client";
@@ -22,7 +22,7 @@ export default function FAQSection() {
   return (
     <section
       id="faq"
-      className="relative w-full max-w-full overflow-hidden bg-white py-16 sm:py-24 lg:py-32 dark:bg-gray-900"
+      className="relative w-full max-w-full overflow-hidden bg-white py-24 sm:py-32 lg:py-44 dark:bg-gray-900"
     >
       <div
         aria-hidden
@@ -42,9 +42,10 @@ export default function FAQSection() {
           <motion.div variants={fadeUp}>
             <SectionHeading
               center
+              variant="marketing"
               eyebrow="FAQ"
               title="Frequently asked questions"
-              description="Quick answers about GooseNet, Garmin integration, and how coach–athlete workflows fit together."
+              description="Straight answers about Garmin sync, coaching workflows, and why GooseNet stays free for coaches."
             />
           </motion.div>
 
@@ -80,7 +81,7 @@ export default function FAQSection() {
                         onClick={() => toggle(index)}
                         className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition-colors hover:bg-white/60 dark:hover:bg-white/5 sm:gap-4 sm:px-6 sm:py-5"
                       >
-                        <span className="text-base font-semibold leading-snug text-gray-900 break-words min-w-0 sm:text-lg dark:text-gray-100">
+                        <span className="text-base font-semibold leading-snug text-gray-900 break-words min-w-0 sm:text-lg md:text-xl dark:text-gray-100">
                           {item.question}
                         </span>
                         <motion.span
@@ -122,7 +123,7 @@ export default function FAQSection() {
                           className="overflow-hidden"
                         >
                           <div className="border-t border-gray-200/70 px-4 pb-5 pt-4 dark:border-white/10 sm:px-6 sm:pb-6">
-                            <p className="text-sm sm:text-base leading-7 text-gray-600 dark:text-gray-400 break-words">
+                            <p className="text-sm sm:text-base md:text-lg leading-7 text-gray-600 dark:text-gray-400 break-words">
                               {item.answer}
                             </p>
                           </div>

@@ -21,9 +21,9 @@ type Step = {
 const STEPS: Step[] = [
   {
     number: "01",
-    title: "Connect Garmin",
+    title: "Athletes link Garmin once",
     description:
-      "Link your Garmin account to sync workouts and performance data automatically.",
+      "Same OAuth flow as the live app: connect, approve, and every completed run flows back automatically.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
         <path
@@ -36,9 +36,9 @@ const STEPS: Step[] = [
   },
   {
     number: "02",
-    title: "Build or receive a workout",
+    title: "Coach writes the workout",
     description:
-      "Coaches author detailed plans. Athletes receive them instantly, ready to sync.",
+      "Intervals, paces, recovery — structured the way you already coach. Assign it to whoever needs it.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
         <path
@@ -51,9 +51,9 @@ const STEPS: Step[] = [
   },
   {
     number: "03",
-    title: "Train, sync, analyze",
+    title: "Everyone sees the same file",
     description:
-      "Run it on your Garmin, then review the full breakdown together in GooseNet.",
+      "After the run, pace, HR, and laps are already in the dashboard — no screenshots, no chasing texts.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
         <path
@@ -70,7 +70,7 @@ export default function HowItWorks() {
   return (
     <section
       id="how-it-works"
-      className="relative w-full max-w-full overflow-hidden bg-white py-16 sm:py-24 lg:py-32 dark:bg-gray-900"
+      className="relative w-full max-w-full overflow-hidden bg-white py-24 sm:py-32 lg:py-44 dark:bg-gray-900"
     >
       <div
         aria-hidden
@@ -90,9 +90,10 @@ export default function HowItWorks() {
           <motion.div variants={fadeUp}>
             <SectionHeading
               center
+              variant="marketing"
               eyebrow="How it works"
-              title="Three steps. Nothing extra."
-              description="A clean loop designed for serious training, not distractions."
+              title="Garmin in. Honest training out."
+              description="No parallel imports, no athlete logins just to look at a chart. Link the watch once, coach in GooseNet, review the real file."
             />
           </motion.div>
 
@@ -113,27 +114,27 @@ export default function HowItWorks() {
               {STEPS.map((step) => (
                 <motion.li key={step.number} variants={fadeUp} className="h-full">
                   <MarketingShinyCard className="h-full">
-                    <div className="flex h-full flex-col items-center px-6 pb-8 pt-8 text-center">
+                    <div className="flex h-full flex-col items-center px-6 pb-10 pt-10 text-center sm:px-8 sm:pb-12 sm:pt-12">
                       <div
-                        className="animate-pulse-glow shadow-glow-brand relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 text-white"
+                        className="animate-pulse-glow shadow-glow-brand relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 text-white sm:h-[4.5rem] sm:w-[4.5rem]"
                         aria-hidden
                       >
-                        <span className="text-lg font-bold tabular-nums">
+                        <span className="text-lg font-bold tabular-nums sm:text-xl">
                           {step.number}
                         </span>
                       </div>
 
                       <div
-                        className="mt-5 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/15 to-purple-500/20 text-blue-600 dark:from-blue-400/10 dark:to-purple-400/15 dark:text-blue-300"
+                        className="mt-6 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/15 to-purple-500/20 text-blue-600 dark:from-blue-400/10 dark:to-purple-400/15 dark:text-blue-300"
                         aria-hidden
                       >
-                        <span className="h-7 w-7">{step.icon}</span>
+                        <span className="h-8 w-8 sm:h-9 sm:w-9">{step.icon}</span>
                       </div>
 
-                      <h3 className="mt-5 text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      <h3 className="mt-6 text-lg font-semibold text-gray-900 sm:text-xl dark:text-gray-100">
                         {step.title}
                       </h3>
-                      <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+                      <p className="mt-3 text-sm leading-relaxed text-gray-600 sm:mt-4 sm:text-base sm:leading-relaxed dark:text-gray-400">
                         {step.description}
                       </p>
                     </div>

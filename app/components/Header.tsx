@@ -25,7 +25,7 @@ function NavLink({ href, label, onClick }: NavLinkProps) {
     <a
       href={href}
       onClick={onClick}
-      className="group relative px-1 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 transition-colors hover:text-gray-900 dark:hover:text-white"
+      className="group relative px-1 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 transition-colors hover:text-gray-900 dark:hover:text-white"
     >
       <span className="relative z-[1]">{label}</span>
       <span
@@ -69,14 +69,16 @@ export default function Header() {
               priority
             />
           </motion.span>
-          <span className="text-base sm:text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50">
+          <span className="text-sm sm:text-base font-bold tracking-tight text-gray-900 dark:text-gray-50">
             GooseNet
           </span>
         </Link>
 
         {/* Desktop Navigation */}
         <div className="hidden lg:flex lg:ml-8 lg:gap-x-8">
-          <NavLink href="#how-it-works" label="How It Works" />
+          <NavLink href="#dashboard-preview" label="Dashboard preview" />
+          <NavLink href="#demo" label="How sync works" />
+          <NavLink href="#how-it-works" label="Steps" />
         </div>
 
         {/* Desktop CTA Buttons */}
@@ -126,9 +128,11 @@ export default function Header() {
                 whileHover={reduce ? undefined : { scale: 1.02 }}
                 whileTap={reduce ? undefined : { scale: 0.98 }}
                 transition={{ type: "spring", stiffness: 400, damping: 28 }}
-                className="relative inline-flex h-10 items-center rounded-xl px-4 text-sm font-semibold text-white shadow-glow-brand bg-[linear-gradient(120deg,#3b82f6_0%,#6366f1_35%,#a855f7_70%,#3b82f6_100%)] bg-[length:200%_100%] animate-gradient hover:brightness-110"
+                className="relative inline-flex h-10 max-w-[200px] items-center justify-center rounded-xl px-3 text-xs font-semibold text-white shadow-glow-brand bg-[linear-gradient(120deg,#3b82f6_0%,#6366f1_35%,#a855f7_70%,#3b82f6_100%)] bg-[length:200%_100%] animate-gradient hover:brightness-110 sm:max-w-none sm:px-4 sm:text-sm"
               >
-                Join GooseNet
+                <span className="truncate sm:whitespace-normal">
+                  See your team&apos;s data
+                </span>
               </motion.a>
             </>
           )}
@@ -176,17 +180,31 @@ export default function Header() {
           >
             <div className="space-y-1 px-6 pb-5 pt-3">
               <a
+                href="#dashboard-preview"
+                onClick={closeMobile}
+                className="block rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-white/5"
+              >
+                Dashboard preview
+              </a>
+              <a
+                href="#demo"
+                onClick={closeMobile}
+                className="block rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-white/5"
+              >
+                How sync works
+              </a>
+              <a
                 href="#how-it-works"
                 onClick={closeMobile}
-                className="block rounded-lg px-3 py-2 text-base font-semibold text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-white/5"
+                className="block rounded-lg px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-white/5"
               >
-                How It Works
+                Steps
               </a>
               {!loading && user ? (
                 <Link
                   href="/dashboard"
                   onClick={closeMobile}
-                  className="mt-3 block rounded-xl border border-gray-200 dark:border-white/10 bg-white/80 dark:bg-gray-900/60 px-3 py-2 text-base font-semibold text-gray-800 dark:text-gray-100"
+                  className="mt-3 block rounded-xl border border-gray-200 dark:border-white/10 bg-white/80 dark:bg-gray-900/60 px-3 py-2 text-sm font-semibold text-gray-800 dark:text-gray-100"
                 >
                   Dashboard
                 </Link>
@@ -195,16 +213,16 @@ export default function Header() {
                   <a
                     href="/login"
                     onClick={closeMobile}
-                    className="mt-3 block rounded-xl border border-gray-200 dark:border-white/10 bg-white/80 dark:bg-gray-900/60 px-3 py-2 text-base font-semibold text-gray-800 dark:text-gray-100"
+                    className="mt-3 block rounded-xl border border-gray-200 dark:border-white/10 bg-white/80 dark:bg-gray-900/60 px-3 py-2 text-sm font-semibold text-gray-800 dark:text-gray-100"
                   >
                     Login
                   </a>
                   <a
                     href="/signup"
                     onClick={closeMobile}
-                    className="mt-2 block rounded-xl px-3 py-2 text-center text-base font-semibold text-white shadow-glow-brand bg-[linear-gradient(120deg,#3b82f6_0%,#6366f1_35%,#a855f7_70%,#3b82f6_100%)] bg-[length:200%_100%] animate-gradient"
+                    className="mt-2 block rounded-xl px-3 py-2 text-center text-sm font-semibold text-white shadow-glow-brand bg-[linear-gradient(120deg,#3b82f6_0%,#6366f1_35%,#a855f7_70%,#3b82f6_100%)] bg-[length:200%_100%] animate-gradient"
                   >
-                    Join GooseNet
+                    See your team&apos;s data
                   </a>
                 </>
               )}

@@ -24,6 +24,13 @@ import {
   inViewOnce,
   stagger,
 } from "./ui";
+import {
+  DEMO_PRIMARY_ATHLETE,
+  DEMO_ROSTER,
+  DEMO_SESSION,
+  DEMO_WORKOUT,
+} from "../../lib/marketing/landingDemoData";
+import { GarminLogoMark, GoogleGLogo } from "./MarketingBrandLogos";
 
 type StepId = "assign" | "sync" | "analyze";
 
@@ -39,23 +46,26 @@ const STEPS: Step[] = [
   {
     id: "assign",
     index: 1,
-    coachLabel: "Coach assigns workout",
-    athleteLabel: "Incoming from your coach",
-    summary: "Structured intervals are authored once and delivered instantly.",
+    coachLabel: "Coach assigns",
+    athleteLabel: "Workout lands in GooseNet",
+    summary:
+      "Intervals, paces, and rest go out once — no PDFs, no copy-paste into group chat.",
   },
   {
     id: "sync",
     index: 2,
-    coachLabel: "Queued for Garmin",
-    athleteLabel: "Synced to your watch",
-    summary: "Workouts land on the athlete's Garmin, ready to execute.",
+    coachLabel: "Garmin queue",
+    athleteLabel: "On the watch",
+    summary:
+      "Same Connect link as production: plan hits the wrist when athletes are paired.",
   },
   {
     id: "analyze",
     index: 3,
-    coachLabel: "Reviewing performance",
-    athleteLabel: "Session complete",
-    summary: "Coach and athlete see the same metrics — no screenshots.",
+    coachLabel: "Review the load",
+    athleteLabel: "Session logged",
+    summary:
+      "Pace, HR, laps — pulled from Garmin automatically. No screenshots to hunt down.",
   },
 ];
 
@@ -100,7 +110,7 @@ export default function AnimatedDemoSection() {
   return (
     <section
       id="demo"
-      className="relative isolate w-full max-w-full overflow-hidden bg-gray-50 py-16 sm:py-24 lg:py-32 dark:bg-gray-950"
+      className="relative isolate w-full max-w-full scroll-mt-24 overflow-hidden bg-gray-50 py-24 sm:py-32 lg:py-44 dark:bg-gray-950"
     >
       <div
         aria-hidden
@@ -117,9 +127,10 @@ export default function AnimatedDemoSection() {
           <motion.div variants={fadeUp}>
             <SectionHeading
               center
-              eyebrow="See the loop"
-              title="One workout. One feed. Zero friction."
-              description="Coach assigns a structured session, athlete syncs it to Garmin, both review the same analysis. Preview the full loop below."
+              variant="marketing"
+              eyebrow="How sync works"
+              title="From your laptop to their Garmin — then back with the full file."
+              description="Assign once, see the completed run with the same charts your athletes see in the app. Zero screenshot threads."
             />
           </motion.div>
 
@@ -208,7 +219,7 @@ export default function AnimatedDemoSection() {
             </div>
             <p
               key={step.id + "-cap"}
-              className="max-w-lg text-center text-sm text-gray-600 dark:text-gray-400"
+              className="max-w-2xl text-center text-sm text-gray-600 sm:text-base md:max-w-3xl md:text-lg dark:text-gray-400"
             >
               {step.summary}
             </p>
@@ -336,13 +347,13 @@ function CoachScene({ step }: { step: Step }) {
   if (step.id === "assign") {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
-              Workout library
+              Planned workout
             </p>
             <h4 className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
-              Tempo + Repeats
+              {DEMO_WORKOUT.name}
             </h4>
           </div>
           <Badge variant="brand" size="sm">
@@ -351,18 +362,24 @@ function CoachScene({ step }: { step: Step }) {
         </div>
         <ul className="space-y-2 rounded-xl border border-gray-200/80 bg-white/70 p-3 text-xs text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
           <li className="flex gap-2">
-            <span className="text-gray-400">1.</span>Warmup 10:00 easy
+            <span className="text-gray-400">1.</span>Warm-up 12:00 easy build
           </li>
           <li className="flex gap-2">
             <span className="text-gray-400">2.</span>
-            5 × (400m @ 3:45–4:00/km, 200m jog)
+            Tempo 2 × 12:00 + 6 × 400 m repeats
           </li>
           <li className="flex gap-2">
-            <span className="text-gray-400">3.</span>Cooldown 10:00
+            <span className="text-gray-400">3.</span>Cool-down 10:00
           </li>
         </ul>
-        <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-3 py-2 text-xs font-semibold text-white shadow-md shadow-purple-500/25">
-          <span>Assign to Noa Levi · Tue</span>
+        <motion.div
+          className="flex items-center justify-between rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-3 py-2 text-xs font-semibold text-white shadow-md shadow-purple-500/25"
+          animate={{ opacity: [0.92, 1, 0.92] }}
+          transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <span>
+            Assign to {DEMO_PRIMARY_ATHLETE.name} · {DEMO_WORKOUT.assignDateLabel}
+          </span>
           <span className="inline-flex items-center gap-1">
             Send
             <svg
@@ -379,7 +396,7 @@ function CoachScene({ step }: { step: Step }) {
               />
             </svg>
           </span>
-        </div>
+        </motion.div>
       </div>
     );
   }
@@ -388,111 +405,108 @@ function CoachScene({ step }: { step: Step }) {
     return (
       <div className="space-y-4">
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
-          Athlete pipeline
+          Delivery queue
         </p>
         <div className="space-y-2">
-          {[
-            { name: "Noa Levi", status: "Synced", color: "success" as const },
-            { name: "Sarah Chen", status: "Queued", color: "brand" as const },
-            { name: "Mike Johnson", status: "Synced", color: "success" as const },
-          ].map((row) => (
-            <div
+          {DEMO_ROSTER.map((row) => (
+            <motion.div
               key={row.name}
+              initial={{ opacity: 0, x: -6 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.35 }}
               className="flex items-center justify-between rounded-xl border border-gray-200/70 bg-white/70 px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
             >
               <div className="flex items-center gap-2">
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-xs font-bold text-white">
-                  {row.name[0]}
+                  {row.initial}
                 </span>
                 <span className="text-xs font-medium text-gray-800 dark:text-gray-200">
                   {row.name}
                 </span>
               </div>
-              <Badge variant={row.color} size="sm" dot>
-                {row.status}
+              <Badge
+                variant={row.status === "synced" ? "success" : "brand"}
+                size="sm"
+                dot
+              >
+                {row.status === "synced" ? "Synced" : "Queued"}
               </Badge>
-            </div>
+            </motion.div>
           ))}
         </div>
         <div className="flex items-center gap-2 rounded-xl border border-teal-500/30 bg-teal-50/60 px-3 py-2 text-xs font-medium text-teal-700 dark:border-teal-400/20 dark:bg-teal-500/10 dark:text-teal-300">
-          <svg
-            className="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2.2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-          3 workouts delivered to Garmin
+          <GarminLogoMark height={16} className="scale-90 opacity-90" />
+          <span className="leading-snug">
+            Workouts handed off to Garmin Connect for on-watch execution
+          </span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
-            Session · Noa
-          </p>
-          <h4 className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
-            Tempo + Repeats
-          </h4>
-        </div>
-        <Badge variant="success" size="sm" dot>
-          Completed
-        </Badge>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          { k: "Distance", v: "5.2", u: "km" },
-          { k: "Avg Pace", v: "4:17", u: "/km" },
-          { k: "Avg HR", v: "165", u: "bpm" },
-        ].map((m) => (
-          <div
-            key={m.k}
-            className="rounded-xl border border-gray-200/80 bg-white/70 p-2.5 dark:border-white/10 dark:bg-white/5"
-          >
-            <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400">
-              {m.k}
-            </div>
-            <div className="mt-0.5 flex items-baseline gap-1">
-              <span className="text-base font-bold text-gray-900 dark:text-gray-100">
-                {m.v}
-              </span>
-              <span className="text-[10px] text-gray-500">{m.u}</span>
-            </div>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
+              Session · {DEMO_PRIMARY_ATHLETE.name}
+            </p>
+            <h4 className="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">
+              {DEMO_WORKOUT.name}
+            </h4>
           </div>
-        ))}
-      </div>
-      <div className="rounded-xl border border-gray-200/80 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
-        <div className="mb-2 flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
-          <span>Pace</span>
-          <span>min/km</span>
+          <Badge variant="success" size="sm" dot>
+            Completed
+          </Badge>
         </div>
-        <svg className="h-8 w-full" viewBox="0 0 100 30" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="paceGrad" x1="0" x2="1" y1="0" y2="0">
-              <stop offset="0%" stopColor="#3b82f6" />
-              <stop offset="100%" stopColor="#a855f7" />
-            </linearGradient>
-          </defs>
-          <motion.polyline
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 1 }}
-            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-            points="0,18 12,14 24,10 36,16 48,8 60,12 72,6 84,10 100,4"
-            fill="none"
-            stroke="url(#paceGrad)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { k: "Distance", v: String(DEMO_SESSION.distanceKm), u: "km" },
+            { k: "Avg pace", v: DEMO_SESSION.avgPace.replace("/km", ""), u: "/km" },
+            { k: "Avg HR", v: String(DEMO_SESSION.avgHr), u: "bpm" },
+          ].map((m) => (
+            <div
+              key={m.k}
+              className="rounded-xl border border-gray-200/80 bg-white/70 p-2.5 dark:border-white/10 dark:bg-white/5"
+            >
+              <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400">
+                {m.k}
+              </div>
+              <div className="mt-0.5 flex items-baseline gap-1">
+                <span className="text-base font-bold text-gray-900 dark:text-gray-100">
+                  {m.v}
+                </span>
+                <span className="text-[10px] text-gray-500">{m.u}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="rounded-xl border border-gray-200/80 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
+          <div className="mb-2 flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+            <span>Pace</span>
+            <span>min/km</span>
+          </div>
+          <svg className="h-8 w-full" viewBox="0 0 100 30" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="paceGradDemo" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0%" stopColor="#3b82f6" />
+                <stop offset="100%" stopColor="#a855f7" />
+              </linearGradient>
+            </defs>
+            <motion.polyline
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+              points="0,18 12,14 24,10 36,16 48,8 60,12 72,6 84,10 100,4"
+              fill="none"
+              stroke="url(#paceGradDemo)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
       </div>
-    </div>
   );
 }
 
@@ -505,7 +519,7 @@ function AthleteScene({ step }: { step: Step }) {
         </Badge>
         <div className="rounded-2xl border border-gray-200/80 p-3 dark:border-white/10">
           <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
-            Tuesday · Tempo + Repeats
+            {DEMO_WORKOUT.assignDateLabel} · {DEMO_WORKOUT.name}
           </p>
           <div className="mt-3 space-y-2">
             {[
@@ -534,9 +548,17 @@ function AthleteScene({ step }: { step: Step }) {
             ))}
           </div>
         </div>
-        <button className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-3 py-2 text-xs font-semibold text-white shadow-md shadow-purple-500/30">
-          Send to my Garmin
-        </button>
+        <motion.button
+          type="button"
+          className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-3 py-2 text-xs font-semibold text-white shadow-md shadow-purple-500/30"
+          whileTap={{ scale: 0.98 }}
+        >
+          Send to Garmin
+        </motion.button>
+        <div className="flex items-center justify-center gap-2 text-[10px] text-gray-500 dark:text-gray-400">
+          <GoogleGLogo size={16} />
+          <span>Google sign-in · no new password for athletes</span>
+        </div>
       </div>
     );
   }
@@ -569,8 +591,11 @@ function AthleteScene({ step }: { step: Step }) {
           </div>
         </div>
         <div className="text-center">
+          <div className="mb-2 flex items-center justify-center gap-2">
+            <GarminLogoMark height={18} />
+          </div>
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            Synced to Forerunner 965
+            Synced to {DEMO_WORKOUT.device}
           </p>
           <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
             Workout on wrist · ready when you are
@@ -584,27 +609,27 @@ function AthleteScene({ step }: { step: Step }) {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
-            Activity
-          </p>
-          <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            Tuesday session
-          </h4>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+              Activity
+            </p>
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {DEMO_WORKOUT.assignDateLabel}
+            </h4>
+          </div>
+          <Badge variant="success" size="sm">
+            PR
+          </Badge>
         </div>
-        <Badge variant="success" size="sm">
-          PR
-        </Badge>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        {[
-          { k: "Pace", v: "4:17" },
-          { k: "HR", v: "165" },
-          { k: "Dist", v: "5.2km" },
-          { k: "Time", v: "22:15" },
-        ].map((m) => (
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { k: "Pace", v: DEMO_SESSION.avgPace.split("/")[0] ?? DEMO_SESSION.avgPace },
+            { k: "HR", v: String(DEMO_SESSION.avgHr) },
+            { k: "Dist", v: `${DEMO_SESSION.distanceKm}km` },
+            { k: "Time", v: DEMO_SESSION.durationLabel },
+          ].map((m) => (
           <div
             key={m.k}
             className="rounded-xl border border-gray-200/80 bg-white/70 p-2 dark:border-white/10 dark:bg-white/5"

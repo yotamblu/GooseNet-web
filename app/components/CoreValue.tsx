@@ -1,8 +1,5 @@
 /**
- * CoreValue
- *
- * Manifesto / pull-quote block. Large elegant typography with a gradient
- * signature line and subtle aurora backdrop.
+ * CoreValue — founder-voice manifesto; injury + trust framing.
  */
 
 "use client";
@@ -12,7 +9,7 @@ import { fadeUp, inViewOnce, stagger } from "./ui";
 
 export default function CoreValue() {
   return (
-    <section className="relative w-full max-w-full overflow-hidden bg-white py-16 sm:py-24 lg:py-32 dark:bg-gray-900">
+    <section className="relative w-full max-w-full overflow-hidden bg-white py-24 sm:py-32 lg:py-44 dark:bg-gray-900">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -20,7 +17,7 @@ export default function CoreValue() {
         <div className="absolute left-1/2 top-1/2 h-[520px] w-[min(100%,860px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-teal-400/10 blur-3xl dark:from-blue-500/10 dark:via-purple-500/10 dark:to-teal-400/5" />
       </div>
 
-      <div className="relative mx-auto max-w-4xl w-full min-w-0 px-4 sm:px-6 lg:px-8 text-center">
+      <div className="relative mx-auto max-w-5xl w-full min-w-0 px-4 sm:px-6 lg:px-8 text-center xl:max-w-6xl">
         <motion.div
           variants={stagger}
           initial="hidden"
@@ -29,27 +26,27 @@ export default function CoreValue() {
         >
           <motion.p
             variants={fadeUp}
-            className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 dark:text-blue-400"
+            className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 sm:text-sm dark:text-blue-400"
           >
-            Our manifesto
+            What we believe
           </motion.p>
 
           <motion.blockquote
             variants={fadeUp}
-            className="display-heading mt-5 text-2xl leading-tight text-gray-900 sm:text-3xl md:text-4xl lg:text-5xl break-words dark:text-gray-50"
+            className="display-heading mt-6 text-2xl leading-tight text-gray-900 sm:mt-8 sm:text-3xl md:text-4xl lg:text-5xl break-words dark:text-gray-50"
           >
             <span
               aria-hidden
-              className="select-none text-gradient-brand mr-2 align-[-0.1em] text-5xl sm:text-6xl"
+              className="select-none text-gradient-brand mr-2 align-[-0.1em] text-5xl sm:text-6xl md:text-7xl"
             >
               &ldquo;
             </span>
-            Real training doesn&apos;t live in screenshots, chat threads, or
-            generic fitness apps. It lives in{" "}
+            The worst Sunday isn&apos;t the long run — it&apos;s explaining to a
+            kid that their season is over. The honest Garmin file should show up{" "}
             <span className="text-gradient-brand animate-gradient bg-[length:200%_100%]">
-              structure, data, and trust
+              before
             </span>{" "}
-            — between an athlete and their coach.
+            that conversation, not buried in your camera roll.
           </motion.blockquote>
 
           <motion.div
@@ -60,8 +57,8 @@ export default function CoreValue() {
               aria-hidden
               className="h-px w-12 bg-gradient-to-r from-transparent via-blue-500 to-transparent"
             />
-            <span className="text-sm font-medium uppercase tracking-[0.16em] text-gray-600 dark:text-gray-400">
-              Built for real running training
+            <span className="text-sm font-medium uppercase tracking-[0.16em] text-gray-600 sm:text-base dark:text-gray-400">
+              Free for coaches who hold the line
             </span>
             <span
               aria-hidden
