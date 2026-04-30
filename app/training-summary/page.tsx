@@ -6,6 +6,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
@@ -13,6 +14,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
 import { apiService } from "../services/api";
 import WorkoutMap from "../components/WorkoutMap";
+import WingmanChatPanel from "../components/WingmanChatPanel";
 import {
   AppShell,
   Button,
@@ -86,6 +88,7 @@ function TrainingSummaryPageContent() {
   const [distanceBarHoverIndex, setDistanceBarHoverIndex] = useState<number | null>(null);
   const [distanceTooltipCenterX, setDistanceTooltipCenterX] = useState<number | null>(null);
   const distanceChartPlotRef = useRef<HTMLDivElement>(null);
+  const [wingmanOpen, setWingmanOpen] = useState(false);
 
   // Require authentication
   useRequireAuth();
@@ -458,6 +461,38 @@ function TrainingSummaryPageContent() {
       eyebrow="Performance"
       gradientTitle
       maxWidth="xl"
+      shellShiftForAside={wingmanOpen && !!summary}
+      actions={
+        !loading && summary ? (
+          <button
+            type="button"
+            onClick={() => setWingmanOpen((open) => !open)}
+            aria-expanded={wingmanOpen}
+            className={cn(
+              "group inline-flex items-center gap-2 rounded-full border border-gray-200/90 bg-white/70 px-3 py-1.5 shadow-sm backdrop-blur-sm transition-all",
+              "hover:border-blue-500/40 hover:bg-white hover:shadow-md hover:shadow-blue-500/10",
+              "dark:border-white/10 dark:bg-white/[0.06] dark:hover:border-blue-400/35 dark:hover:bg-white/[0.09]"
+            )}
+            aria-label="Wingman — AI help for your training summary"
+          >
+            <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/15 via-purple-500/10 to-teal-400/15 ring-1 ring-white/60 dark:ring-white/10">
+              <Image
+                src="/wingman_logo.png"
+                alt=""
+                width={22}
+                height={22}
+                className="h-[22px] w-[22px] object-contain"
+              />
+            </span>
+            <span className="text-sm font-semibold tracking-tight text-gray-800 dark:text-gray-100">
+              Wingman
+            </span>
+            <Badge variant="brand" size="sm" className="uppercase tracking-[0.12em]">
+              New
+            </Badge>
+          </button>
+        ) : undefined
+      }
     >
       {/* Date selector card */}
       <Card variant="glass" padding="lg" className="mb-8">
@@ -1034,6 +1069,13 @@ function TrainingSummaryPageContent() {
             Choose a quick preset or select start and end dates above.
           </p>
         </Card>
+      )}
+      {!loading && summary && (
+        <WingmanChatPanel
+          open={wingmanOpen}
+          onClose={() => setWingmanOpen(false)}
+          periodLabel={`${summary.startDate} → ${summary.endDate}`}
+        />
       )}
     </AppShell>
   );

@@ -38,6 +38,11 @@ export interface AppShellProps {
   /** Apply gradient text to the PageHeader title. */
   gradientTitle?: boolean;
   className?: string;
+  /**
+   * When true, header + scrollable body shift left (matching a ~26rem right aside).
+   * Body uses its own vertical scroll so it stays independent of a fixed side panel.
+   */
+  shellShiftForAside?: boolean;
   children: React.ReactNode;
 }
 
@@ -81,6 +86,7 @@ export default function AppShell({
   maxWidth = "xl",
   gradientTitle = false,
   className,
+  shellShiftForAside = false,
   children,
 }: AppShellProps) {
   const { user, loading } = useAuth();
@@ -89,17 +95,55 @@ export default function AppShell({
   const navItems = nav ?? getDefaultNavForRole(user?.role);
   const authed = !loading && !!user;
 
+  const renderPageMain = () => (
+    <main
+      className={cn(
+        "relative w-full min-w-0 max-w-full",
+        !shellShiftForAside && "flex-1"
+      )}
+    >
+      <PageContainer width={maxWidth}>
+        {title && !hidePageHeader && (
+          <PageHeader
+            title={title}
+            subtitle={subtitle}
+            eyebrow={eyebrow}
+            actions={actions}
+            gradient={gradientTitle}
+          />
+        )}
+        {children}
+      </PageContainer>
+    </main>
+  );
+
   return (
     <div
       className={cn(
-        "relative flex min-h-screen flex-col w-full max-w-full min-w-0 overflow-x-hidden",
+        "relative flex w-full max-w-full min-w-0 flex-col overflow-x-hidden",
         !plainBackground && "bg-aurora-subtle",
         "bg-white dark:bg-[#0b0f17]",
+        shellShiftForAside
+          ? "h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden"
+          : "min-h-screen",
         className
       )}
     >
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 flex-col transition-[margin] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          shellShiftForAside &&
+            "mr-[min(100vw,26rem)] min-h-0 flex-1 overflow-hidden",
+          !shellShiftForAside && "min-h-screen"
+        )}
+      >
       {/* Top bar */}
-      <header className="sticky top-0 z-40 w-full max-w-full border-b border-gray-200/60 dark:border-white/10 bg-white/70 dark:bg-gray-950/60 backdrop-blur-xl">
+      <header
+        className={cn(
+          "z-40 w-full max-w-full border-b border-gray-200/60 dark:border-white/10 bg-white/70 dark:bg-gray-950/60 backdrop-blur-xl",
+          shellShiftForAside ? "shrink-0" : "sticky top-0"
+        )}
+      >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-4 px-4 sm:px-6 lg:px-8 h-16">
           <Link href={authed ? "/dashboard" : "/"} className="group flex items-center gap-2 shrink-0">
             <motion.span
@@ -231,23 +275,26 @@ export default function AppShell({
         )}
       </header>
 
-      {/* Main content */}
-      <main className="relative flex-1 w-full min-w-0 max-w-full">
-        <PageContainer width={maxWidth}>
-          {title && !hidePageHeader && (
-            <PageHeader
-              title={title}
-              subtitle={subtitle}
-              eyebrow={eyebrow}
-              actions={actions}
-              gradient={gradientTitle}
-            />
-          )}
-          {children}
-        </PageContainer>
-      </main>
-
-      {!hideFooter && <Footer />}
+      {shellShiftForAside ? (
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div
+            className={cn(
+              "touch-pan-y min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-y-contain",
+              "[scrollbar-gutter:stable]"
+            )}
+            data-appshell-scroll="main"
+          >
+            {renderPageMain()}
+            {!hideFooter && <Footer />}
+          </div>
+        </div>
+      ) : (
+        <>
+          {renderPageMain()}
+          {!hideFooter && <Footer />}
+        </>
+      )}
+      </div>
     </div>
   );
 }
