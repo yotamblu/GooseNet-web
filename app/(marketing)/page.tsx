@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import Header from "../components/Header";
 import Hero from "../components/Hero";
+import LandingDashboardShowcase from "../components/LandingDashboardShowcase";
 import AnimatedDemoSection from "../components/AnimatedDemoSection";
 import ForCoaches from "../components/ForCoaches";
 import ForAthletes from "../components/ForAthletes";
@@ -60,6 +61,7 @@ export default function Home() {
     <main className="min-h-screen min-h-[100dvh] w-full max-w-full min-w-0 overflow-x-hidden bg-white dark:bg-gray-900">
       <Header />
       <Hero />
+      <LandingDashboardShowcase />
       <AnimatedDemoSection />
       <ForCoaches />
       <ForAthletes />
