@@ -53,7 +53,7 @@ export const metadata: Metadata = {
       {
         url: "/preview.png",
         width: 1200,
-        height: 630,
+        height: 628,
         alt: "GooseNet — Train smarter, run stronger, together",
       },
     ],
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
       {
         url: "/preview.png",
         width: 1200,
-        height: 630,
+        height: 628,
         alt: "GooseNet — Train smarter, run stronger, together",
       },
     ],
