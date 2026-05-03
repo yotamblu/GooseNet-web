@@ -49,6 +49,19 @@ export default function Hero() {
         </>
       )}
 
+      {reduce && (
+        <>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -top-32 -left-32 h-[26rem] w-[26rem] rounded-full bg-blue-500/20 blur-3xl dark:bg-blue-500/15"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute top-28 right-[-6rem] h-[22rem] w-[22rem] rounded-full bg-purple-500/20 blur-3xl dark:bg-purple-500/12"
+          />
+        </>
+      )}
+
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
@@ -66,10 +79,10 @@ export default function Hero() {
       {/* Bottom fade: hints there is more below without clipping content */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white/25 to-transparent dark:from-gray-900/40"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-32 bg-gradient-to-t from-white/25 to-transparent dark:from-gray-900/40"
       />
 
-      <div className="relative mx-auto w-full min-w-0 max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto w-full min-w-0 max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
           variants={stagger}
           initial="hidden"
